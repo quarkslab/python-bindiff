@@ -1,10 +1,11 @@
+#from __future__ import annotations  #put it back when python 3.7 will be widely adopted
 import sqlite3
 import logging
 from bindiff import BINDIFF_BINARY
 from bindiff.types import ProgramBinDiff, FunctionBinDiff, BasicBlockBinDiff, InstructionBinDiff
 from bindiff.types import BasicBlockAlgorithm, FunctionAlgorithm
 from binexport import ProgramBinExport
-from typing import Union
+from typing import Union, Optional
 import subprocess
 import tempfile
 import os
@@ -97,7 +98,6 @@ class BinDiff:
             return retcode
         # Now look for the generated file
         out_file = tmp_dir / (os.path.splitext(f1.name)[0] + "_vs_" + os.path.splitext(f2.name)[0] + ".BinDiff")
-        print(out_file)
         if out_file.exists():
             os.rename(out_file.as_posix(), out_diff)
         else:  # try iterating the directory to find the .BinExport file
@@ -117,9 +117,19 @@ class BinDiff:
         return 0
 
     @staticmethod
-    def from_binary_file(p1, p2, out_diff):
-        pass  # TODO: Call the ProgramBinExport.from_binary_file + return an instance of BinDiff
+    def from_binary_files(p1_path: str, p2_path: str, diff_out: str) -> Optional['BinDiff']:
+        p1 = ProgramBinExport.from_binary_file(p1_path)
+        p2 = ProgramBinExport.from_binary_file(p2_path)
+        p1_binexport = os.path.splitext(p1_path)[0]+".BinExport"
+        p2_binexport = os.path.splitext(p2_path)[0]+".BinExport"
+        if p1 and p2:
+            retcode = BinDiff._start_diffing(p1_binexport, p2_binexport, diff_out)
+            return BinDiff(p1, p2, diff_out) if retcode == 0 else None
+        else:
+            logging.error("p1 or p2 could not have been 'binexported'")
+            return None
 
     @staticmethod
-    def from_binexport_file(primary, secondary, out_diff):
-        pass  # TODO
+    def from_binexport_files(p1_binexport: str, p2_binexport: str, diff_out: str) -> Optional['BinDiff']:
+        retcode = BinDiff._start_diffing(p1_binexport, p2_binexport, diff_out)
+        return BinDiff(p1_binexport, p2_binexport, diff_out) if retcode == 0 else None
