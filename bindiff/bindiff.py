@@ -55,22 +55,43 @@ class BinDiff:
         f1.match, f2.match = f2, f1
         query = "SELECT id, address1, address2, algorithm FROM basicblock WHERE basicblock.functionid == %d" % f_id
         for bb_data in conn.execute(query):
-            bb_id, bb_addr1, bb_addr2, algo = bb_data
-            self._load_basic_block_info(conn, bb_id, f1[bb_addr1], f2[bb_addr2], algo)
+            #bb_id, bb_addr1, bb_addr2, algo = bb_data
+            self._load_basic_block_info(conn, f1, f2, *bb_data)
 
-    def _load_basic_block_info(self, conn, bb_id, bb1, bb2, algo):
-        bb1.__class__ = BasicBlockBinDiff
-        bb2.__class__ = BasicBlockBinDiff
-        bb1.match, bb2.match = bb2, bb1
-        bb1.algorithm, bb2.algorithm = BasicBlockAlgorithm(algo), BasicBlockAlgorithm(algo)
+    def _load_basic_block_info(self, conn, f1, f2, bb_id, bb_addr1, bb_addr2, algo):
         query = "SELECT address1, address2 FROM instruction WHERE instruction.basicblockid == %d" % bb_id
-        for inst_data in conn.execute(query):
-            i_addr1, i_addr2 = inst_data
-            try:
-                self._load_instruction_info(bb1[i_addr1], bb2[i_addr2])
-            except KeyError as e:
-                print('bbid: %d, bb1:0x%x, bb2:0x%x inst1:0x%x, inst2:0x%x' % (bb_id, bb1.addr, bb2.addr, i_addr1, i_addr2))
-                raise(e)
+        inst_data = conn.execute(query).fetchall()
+        while inst_data:
+            bb1, bb2 = f1[bb_addr1], f2[bb_addr2]
+            bb1.__class__ = BasicBlockBinDiff
+            bb2.__class__ = BasicBlockBinDiff
+            bb1.match, bb2.match = bb2, bb1
+            bb1.algorithm, bb2.algorithm = BasicBlockAlgorithm(algo), BasicBlockAlgorithm(algo)
+            while inst_data:
+                i_addr1, i_addr2 = inst_data[0]
+                try:
+                    self._load_instruction_info(bb1[i_addr1], bb2[i_addr2])
+                    inst_data.pop(0)
+                except KeyError as e:
+                    bb_addr1, bb_addr2 = inst_data[0]
+                    break
+                    #print('bbid: %d, bb1:0x%x, bb2:0x%x inst1:0x%x, inst2:0x%x' % (bb_id, bb1.addr, bb2.addr, i_addr1, i_addr2))
+                    #raise(e)
+
+    # def _load_basic_block_info(self, conn, f1, f2, bb_id, bb_addr1, bb_addr2, algo):
+    #     bb1, bb2 = f1[bb_addr1], f2[bb_addr2]
+    #     bb1.__class__ = BasicBlockBinDiff
+    #     bb2.__class__ = BasicBlockBinDiff
+    #     bb1.match, bb2.match = bb2, bb1
+    #     bb1.algorithm, bb2.algorithm = BasicBlockAlgorithm(algo), BasicBlockAlgorithm(algo)
+    #     query = "SELECT address1, address2 FROM instruction WHERE instruction.basicblockid == %d" % bb_id
+    #     for inst_data in conn.execute(query):
+    #         i_addr1, i_addr2 = inst_data
+    #         try:
+    #             self._load_instruction_info(bb1[i_addr1], bb2[i_addr2])
+    #         except KeyError as e:
+    #             print('bbid: %d, bb1:0x%x, bb2:0x%x inst1:0x%x, inst2:0x%x' % (bb_id, bb1.addr, bb2.addr, i_addr1, i_addr2))
+    #             raise(e)
 
     def _load_instruction_info(self, inst1, inst2):
         inst1.__class__ = InstructionBinDiff
