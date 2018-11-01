@@ -1,6 +1,8 @@
 import sqlite3
 import logging
 from bindiff import BINDIFF_BINARY
+from bindiff.types import ProgramBinDiff, FunctionBinDiff, BasicBlockBinDiff, InstructionBinDiff
+from bindiff.types import BasicBlockAlgorithm, FunctionAlgorithm
 from binexport import ProgramBinExport
 from typing import Union
 import subprocess
@@ -8,11 +10,72 @@ import tempfile
 import os
 from pathlib import Path
 import shutil
+from datetime import datetime
 
 
 class BinDiff:
-    def __init__(self, primary: Union[ProgramBinExport, str], secondary: Union[ProgramBinExport, str], diff: str):
-        pass  # TODO: load the file
+    def __init__(self, primary: Union[ProgramBinExport, str], secondary: Union[ProgramBinExport, str], diff_file: str):
+        self.primary = ProgramBinExport(primary) if isinstance(primary, str) else primary
+        self.secondary = ProgramBinExport(secondary) if isinstance(secondary, str) else secondary
+        self.similarity = None
+        self.confidence = None
+        self.version = None
+        self.created = None
+        self.modified = None
+
+        conn = sqlite3.connect(diff_file)
+        self._load_metadata(conn.cursor())
+        # also set the similarity/confidence in case the user want to drop the BinDiff object
+        self.primary.__class__ = ProgramBinDiff
+        self.secondary.__class__ = ProgramBinDiff
+        self.primary.similarity, self.secondary.similarity = self.similarity, self.similarity
+        self.primary.confidence, self.secondary.confidence = self.confidence, self.confidence
+
+        query = "SELECT id, address1, address2, similarity, confidence, algorithm FROM function"
+        for f_data in conn.execute(query):
+            self._load_function_info(conn.cursor(), *f_data)
+        conn.close()
+
+    def _load_metadata(self, cursor):
+        query = "SELECT created, modified, similarity, confidence FROM metadata"
+        self.created, self.modified, self.similarity, self.confidence = cursor.execute(query).fetchone()
+        self.created = datetime.strptime(self.created, "%Y-%m-%d %H:%M:%S")
+        self.modified = datetime.strptime(self.modified, "%Y-%m-%d %H:%M:%S")
+        self.similarity = float("{0:.3f}".format(self.similarity))  # round the value to 3 decimals
+        self.confidence = float("{0:.3f}".format(self.confidence))  # round the value to 3 decimals
+
+    def _load_function_info(self, conn, f_id, addr1, addr2, similarity, confidence, algo) -> None:
+        f1 = self.primary[addr1]
+        f2 = self.secondary[addr2]
+        f1.__class__ = FunctionBinDiff
+        f2.__class__ = FunctionBinDiff
+        f1.similarity, f2.similarity = similarity, similarity
+        f1.confidence, f2.confidence = confidence, confidence
+        f1.algorithm, f2.algorithm = FunctionAlgorithm(algo), FunctionAlgorithm(algo)
+        f1.match, f2.match = f2, f1
+        query = "SELECT id, address1, address2, algorithm FROM basicblock WHERE basicblock.functionid == %d" % f_id
+        for bb_data in conn.execute(query):
+            bb_id, bb_addr1, bb_addr2, algo = bb_data
+            self._load_basic_block_info(conn, bb_id, f1[bb_addr1], f2[bb_addr2], algo)
+
+    def _load_basic_block_info(self, conn, bb_id, bb1, bb2, algo):
+        bb1.__class__ = BasicBlockBinDiff
+        bb2.__class__ = BasicBlockBinDiff
+        bb1.match, bb2.match = bb2, bb1
+        bb1.algorithm, bb2.algorithm = BasicBlockAlgorithm(algo), BasicBlockAlgorithm(algo)
+        query = "SELECT address1, address2 FROM instruction WHERE instruction.basicblockid == %d" % bb_id
+        for inst_data in conn.execute(query):
+            i_addr1, i_addr2 = inst_data
+            try:
+                self._load_instruction_info(bb1[i_addr1], bb2[i_addr2])
+            except KeyError as e:
+                print('bbid: %d, bb1:0x%x, bb2:0x%x inst1:0x%x, inst2:0x%x' % (bb_id, bb1.addr, bb2.addr, i_addr1, i_addr2))
+                raise(e)
+
+    def _load_instruction_info(self, inst1, inst2):
+        inst1.__class__ = InstructionBinDiff
+        inst2.__class__ = InstructionBinDiff
+        inst1.match, inst2.match = inst2, inst1
 
     @staticmethod
     def _start_diffing(p1_path: str, p2_path: str, out_diff: str) -> int:
@@ -54,10 +117,3 @@ class BinDiff:
     @staticmethod
     def from_binexport_file(primary, secondary, out_diff):
         pass  # TODO
-
-    def _apply_matching(self):
-        pass
-        '''
-        - add the appropriate attribute and methods the classes
-        - iterate the match and apply it to function basic block and instructions
-        '''
