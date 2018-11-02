@@ -1,17 +1,20 @@
 #from __future__ import annotations  #put it back when python 3.7 will be widely adopted
+from __future__ import absolute_import
+import os
 import sqlite3
 import logging
+import shutil
+from datetime import datetime
+import subprocess
+import tempfile
+from pathlib import Path
+from typing import Union, Optional
+
+from binexport import ProgramBinExport
+
 from bindiff import BINDIFF_BINARY
 from bindiff.types import ProgramBinDiff, FunctionBinDiff, BasicBlockBinDiff, InstructionBinDiff
 from bindiff.types import BasicBlockAlgorithm, FunctionAlgorithm
-from binexport import ProgramBinExport
-from typing import Union, Optional
-import subprocess
-import tempfile
-import os
-from pathlib import Path
-import shutil
-from datetime import datetime
 
 
 class BinDiff:
@@ -25,6 +28,7 @@ class BinDiff:
         self.version = None
         self.created = None
         self.modified = None
+        self.single_match = []
 
         conn = sqlite3.connect(diff_file)
         self._load_metadata(conn.cursor())
@@ -32,7 +36,7 @@ class BinDiff:
         self.primary.similarity, self.secondary.similarity = self.similarity, self.similarity
         self.primary.confidence, self.secondary.confidence = self.confidence, self.confidence
 
-        query = "SELECT id, address1, address2, similarity, confidence, algorithm FROM function"
+        query = "SELECT id, address1, address2, similarity, confidence, algorithm FROM function WHERE 144 <= id <= 116"  # WHERE address1 == 4218784"
         for f_data in conn.execute(query):
             self._load_function_info(conn.cursor(), *f_data)
         conn.close()
@@ -62,23 +66,38 @@ class BinDiff:
         f1.algorithm, f2.algorithm = FunctionAlgorithm(algo), FunctionAlgorithm(algo)
         f1.match, f2.match = f2, f1
         query = "SELECT id, address1, address2, algorithm FROM basicblock WHERE basicblock.functionid == %d" % f_id
-        for bb_data in conn.execute(query):
+        alls = conn.execute(query).fetchall()
+        #print("f1: 0x%x, f2: 0x%x (id:%d)" % (f1.addr, f2.addr, f_id))
+        for bb_data in alls:
             self._load_basic_block_info(conn, f1, f2, *bb_data)
 
     def _load_basic_block_info(self, conn, f1, f2, bb_id, bb_addr1, bb_addr2, algo):
+        #print("bbid:%d bb_addr1:0x%x bb_addr:0x%x" % (bb_id, bb_addr1, bb_addr2))
         query = "SELECT address1, address2 FROM instruction WHERE instruction.basicblockid == %d" % bb_id
         inst_data = conn.execute(query).fetchall()
         while inst_data:
             bb1, bb2 = f1[bb_addr1], f2[bb_addr2]
+            if bb1.match or bb2.match:
+                if bb1.match != bb2 or bb2.match != bb1:
+                    print("Will make a basic block to match another one: (0x%x-0x%x) (0x%x-0x%x)" % (bb1.addr, bb1.match.addr, bb2.addr, bb2.match.addr))
             bb1.match, bb2.match = bb2, bb1
             bb1.algorithm, bb2.algorithm = BasicBlockAlgorithm(algo), BasicBlockAlgorithm(algo)
             while inst_data:
-                i_addr1, i_addr2 = inst_data[0]
+                i_addr1, i_addr2 = inst_data.pop(0)
                 try:
                     self._load_instruction_info(bb1[i_addr1], bb2[i_addr2])
-                    inst_data.pop(0)
                 except KeyError as e:
-                    bb_addr1, bb_addr2 = inst_data[0]
+                    # Both instruction should be in a new unmatched basic blocks (other make them orphan)
+                    if i_addr1 not in bb1 and i_addr2 not in bb2:
+                        bb_addr1 = i_addr1 if i_addr1 in f1 else [x.addr for x in f1.values() if i_addr1 in x][0]
+                        bb_addr2 = i_addr2 if i_addr2 in f2 else [x.addr for x in f2.values() if i_addr2 in x][0]
+                        if f1[bb_addr1].match or f2[bb_addr2].match:
+                            print("One of the two block is already matched")
+                            self.single_match.append((i_addr1, i_addr2))
+                        else:  # else put instructions back in the list
+                            inst_data.insert(0, (i_addr1, i_addr2))
+                    else:
+                        self.single_match.append((i_addr1, i_addr2))
                     break
 
     def _load_instruction_info(self, inst1, inst2):

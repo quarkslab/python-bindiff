@@ -50,15 +50,26 @@ class MatchMixin(object):
         return self._match is not None
 
 
-class ProgramBinDiff(MatchMixin, SimilarityMixin, ProgramBinExport):
+class DictMatchMixin(MatchMixin):
+
+    @property
+    def nb_match(self):
+        return sum(1 for x in self.values() if x.is_matched())
+
+    @property
+    def nb_unmatch(self):
+        return sum(1 for x in self.values() if not x.is_matched())
+
+
+class ProgramBinDiff(DictMatchMixin, SimilarityMixin, ProgramBinExport):
     pass
 
 
-class FunctionBinDiff(MatchMixin, AlgorithmMixin, SimilarityMixin, FunctionBinExport):
+class FunctionBinDiff(DictMatchMixin, AlgorithmMixin, SimilarityMixin, FunctionBinExport):
     pass
 
 
-class BasicBlockBinDiff(MatchMixin, AlgorithmMixin, BasicBlockBinExport):
+class BasicBlockBinDiff(DictMatchMixin, AlgorithmMixin, BasicBlockBinExport):
     pass
 
 
