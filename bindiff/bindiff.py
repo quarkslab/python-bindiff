@@ -30,15 +30,25 @@ class BinDiff:
         self.modified = None
         self.single_match = []
 
-        conn = sqlite3.connect(diff_file)
+        conn = sqlite3.connect('file:'+diff_file+'?mode=ro', uri=True)
         self._load_metadata(conn.cursor())
         # also set the similarity/confidence in case the user want to drop the BinDiff object
         self.primary.similarity, self.secondary.similarity = self.similarity, self.similarity
         self.primary.confidence, self.secondary.confidence = self.confidence, self.confidence
 
-        query = "SELECT id, address1, address2, similarity, confidence, algorithm FROM function WHERE 144 <= id <= 116"  # WHERE address1 == 4218784"
-        for f_data in conn.execute(query):
-            self._load_function_info(conn.cursor(), *f_data)
+        #Extract all the data from the database
+        fun_query = "SELECT id, address1, address2, similarity, confidence, algorithm FROM function"
+        funs = {x[0]: list(x[1:])+[{}] for x in conn.execute(fun_query)}
+        query = "SELECT bb.functionid, bb.id, bb.address1, bb.address2, bb.algorithm, i.address1, i.address2 FROM " \
+                "basicblock AS bb, instruction AS i WHERE bb.id == i.basicblockid"
+        for f_id, bb_id, bb_addr1, bb_addr2, bb_algo, i1, i2 in conn.execute(query):
+            if bb_id in funs[f_id][5]:
+                funs[f_id][5][bb_id][3].append((i1, i2))
+            else:
+                funs[f_id][5][bb_id] = [bb_addr1, bb_addr2, bb_algo, [(i1, i2)]]
+
+        for f_data in funs.values():
+            self._load_function_info(*f_data)
         conn.close()
 
     def _convert_program_classes(self, p):
@@ -58,23 +68,19 @@ class BinDiff:
         self.similarity = float("{0:.3f}".format(self.similarity))  # round the value to 3 decimals
         self.confidence = float("{0:.3f}".format(self.confidence))  # round the value to 3 decimals
 
-    def _load_function_info(self, conn, f_id, addr1, addr2, similarity, confidence, algo) -> None:
+    def _load_function_info(self, addr1, addr2, similarity, confidence, algo, bbs_data) -> None:
         f1 = self.primary[addr1]
         f2 = self.secondary[addr2]
         f1.similarity, f2.similarity = similarity, similarity
         f1.confidence, f2.confidence = confidence, confidence
         f1.algorithm, f2.algorithm = FunctionAlgorithm(algo), FunctionAlgorithm(algo)
         f1.match, f2.match = f2, f1
-        query = "SELECT id, address1, address2, algorithm FROM basicblock WHERE basicblock.functionid == %d" % f_id
-        alls = conn.execute(query).fetchall()
         #print("f1: 0x%x, f2: 0x%x (id:%d)" % (f1.addr, f2.addr, f_id))
-        for bb_data in alls:
-            self._load_basic_block_info(conn, f1, f2, *bb_data)
+        for bb_data in bbs_data.values():
+            self._load_basic_block_info(f1, f2, *bb_data)
 
-    def _load_basic_block_info(self, conn, f1, f2, bb_id, bb_addr1, bb_addr2, algo):
+    def _load_basic_block_info(self, f1, f2, bb_addr1, bb_addr2, algo, inst_data):
         #print("bbid:%d bb_addr1:0x%x bb_addr:0x%x" % (bb_id, bb_addr1, bb_addr2))
-        query = "SELECT address1, address2 FROM instruction WHERE instruction.basicblockid == %d" % bb_id
-        inst_data = conn.execute(query).fetchall()
         while inst_data:
             bb1, bb2 = f1[bb_addr1], f2[bb_addr2]
             if bb1.match or bb2.match:
