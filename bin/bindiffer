@@ -1,0 +1,66 @@
+#!/usr/bin/env python3
+# coding: utf-8
+
+import logging
+import os.path
+import magic
+import click
+
+from bindiff import BinDiff
+
+BINARY_FORMAT = {'application/x-dosexec',
+                 'application/x-sharedlib',
+                 'application/x-mach-binary',
+                 'application/x-executable'}
+
+CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'],
+                        max_content_width=300)
+
+
+@click.command(context_settings=CONTEXT_SETTINGS)
+@click.option('-i', '--ida-path', type=click.Path(exists=True), default=None, help="IDA Pro installation directory")
+@click.option('-b', '--bindiff-path', type=click.Path(exists=True), default=None, help="BinDiff differ directory")
+@click.option('-t', '--type', type=click.Choice(['bin', 'binexport']), default="bin", multiple=False,
+              metavar="<type>", help="inputs files type ('bin', 'binexport') [default:'bin']", required=False)
+@click.option('-o', '--output', type=click.Path(), default=None, help="Output file matching")
+@click.argument("primary", type=click.Path(exists=True), metavar="<primary file>")
+@click.argument('secondary', type=click.Path(exists=True), metavar="<secondary file>")
+def main(ida_path, bindiff_path, type, output, primary, secondary):
+    """
+    bindiffer is a very simple utility to diff two binary files using BinDiff
+    in command line. The two input files can be either binary files (in which
+    case IDA is used) or directly .BinExport file (solely BinDiff is used).
+    """
+
+    logging.basicConfig(format='[%(levelname)s] %(message)s', level=logging.INFO)
+
+    if ida_path:
+        os.environ['IDA_PATH'] = os.path.abspath(ida_path)
+
+    if bindiff_path:
+        os.environ['BINDIFF_PATH'] = os.path.abspath(bindiff_path)
+
+    if output is None:
+        output = (os.path.splitext(primary.name)[0] + "_vs_" + os.path.splitext(secondary.name)[0] + ".BinDiff")
+
+    diff = None
+
+    if type == "bin":
+        if magic.from_file(primary, mime=True) not in BINARY_FORMAT or\
+                magic.from_file(secondary, mime=True) not in BINARY_FORMAT:
+            logging.error("the file is not an executable file")
+            exit(1)
+        diff = BinDiff.from_binary_files(primary, secondary, output)
+    else:
+        diff = BinDiff.from_binexport_files(primary, secondary, output)
+
+    if not diff:
+        logging.error("the diffing failed")
+        exit(1)
+    else:
+        logging.info("diffing file written to: %s" % output)
+        exit(0)
+
+
+if __name__ == '__main__':
+    main()
