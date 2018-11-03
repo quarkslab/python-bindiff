@@ -1,83 +1,14 @@
-from binexport.loader import ProgramBinExport, FunctionBinExport, BasicBlockBinExport, InstructionBinExport
 from enum import IntEnum
+from typing import Union, Optional
 
-
-class AlgorithmMixin(object):
-    _algorithm = None
-
-    @property
-    def algorithm(self):
-        return self._algorithm
-
-    @algorithm.setter
-    def algorithm(self, value):
-        self._algorithm = value
-
-
-class SimilarityMixin(object):
-    _similarity = None
-    _confidence = None
-
-    @property
-    def similarity(self):
-        return self._similarity
-
-    @similarity.setter
-    def similarity(self, value):
-        self._similarity = float("{0:.3f}".format(value))
-
-    @property
-    def confidence(self):
-        return self._confidence
-
-    @confidence.setter
-    def confidence(self, value):
-        self._confidence = float("{0:.3f}".format(value))
-
-
-class MatchMixin(object):
-    _match = None
-
-    @property
-    def match(self):
-        return self._match
-
-    @match.setter
-    def match(self, value):
-        self._match = value
-
-    def is_matched(self):
-        return self._match is not None
-
-
-class DictMatchMixin(MatchMixin):
-
-    @property
-    def nb_match(self):
-        return sum(1 for x in self.values() if x.is_matched())
-
-    @property
-    def nb_unmatch(self):
-        return sum(1 for x in self.values() if not x.is_matched())
-
-
-class ProgramBinDiff(DictMatchMixin, SimilarityMixin, ProgramBinExport):
-    pass
-
-
-class FunctionBinDiff(DictMatchMixin, AlgorithmMixin, SimilarityMixin, FunctionBinExport):
-    pass
-
-
-class BasicBlockBinDiff(DictMatchMixin, AlgorithmMixin, BasicBlockBinExport):
-    pass
-
-
-class InstructionBinDiff(MatchMixin, InstructionBinExport):
-    pass
+from binexport.loader import ProgramBinExport, FunctionBinExport, BasicBlockBinExport, InstructionBinExport
 
 
 class BasicBlockAlgorithm(IntEnum):
+    """
+    Basic block matching algorithm enum. (id's does not seems to change in
+    bindiff so hardcoded here)
+    """
     edges_prime_product = 1
     hash_matching_four_inst_min = 2
     prime_matching_four_inst_min = 3
@@ -101,6 +32,10 @@ class BasicBlockAlgorithm(IntEnum):
 
 
 class FunctionAlgorithm(IntEnum):
+    """
+    Function matching algorithm enum. (id's does not seems to change in
+    bindiff so hardcoded here)
+    """
     name_hash_matching = 1
     hash_matching = 2
     edges_flowgraph_md_index = 3
@@ -121,3 +56,107 @@ class FunctionAlgorithm(IntEnum):
     call_reference_matching = 18
     manual = 19
 
+
+class AlgorithmMixin(object):
+    """
+    Mixin class representing the matching algorithm as given by bindiff
+    """
+    _algorithm = None
+
+    @property
+    def algorithm(self) -> Optional[Union[BasicBlockAlgorithm, FunctionAlgorithm]]:
+        return self._algorithm
+
+    @algorithm.setter
+    def algorithm(self, value: Union[BasicBlockAlgorithm, FunctionAlgorithm]) -> None:
+        self._algorithm = value
+
+
+class SimilarityMixin(object):
+    """
+    Mixing class to represent a similarity between to entities.
+    """
+    _similarity = None
+    _confidence = None
+
+    @property
+    def similarity(self) -> Optional[float]:
+        return self._similarity
+
+    @similarity.setter
+    def similarity(self, value: float) -> None:
+        self._similarity = float("{0:.3f}".format(value))
+
+    @property
+    def confidence(self) -> Optional[float]:
+        return self._confidence
+
+    @confidence.setter
+    def confidence(self, value: float) -> None:
+        self._confidence = float("{0:.3f}".format(value))
+
+
+class MatchMixin(object):
+    """
+    Mixin class to represent a match between two object.
+    """
+    _match = None
+
+    @property
+    def match(self) -> Optional[object]:
+        return self._match
+
+    @match.setter
+    def match(self, value: object) -> None:
+        self._match = value
+
+    def is_matched(self) -> bool:
+        return self._match is not None
+
+
+class DictMatchMixin(MatchMixin):
+    """
+    Extension of MatchMixin applied on dict object to compute
+    the number of matched / unmatched object within the dict.
+    """
+
+    @property
+    def nb_match(self) -> int:
+        return sum(1 for x in self.values() if x.is_matched())
+
+    @property
+    def nb_unmatch(self) -> int:
+        return sum(1 for x in self.values() if not x.is_matched())
+
+
+class ProgramBinDiff(DictMatchMixin, SimilarityMixin, ProgramBinExport):
+    """
+    Program class to represent a diffed binary. Basically enrich
+    a ProgramBinExport class with match, similarity, confidence
+    attributes and the associated methods
+    """
+    pass
+
+
+class FunctionBinDiff(DictMatchMixin, AlgorithmMixin, SimilarityMixin, FunctionBinExport):
+    """
+    Function class to represent a diffed function. Enrich FunctionBinExport
+    with math, similarity, confidence and algorithm attributes.
+    """
+    pass
+
+
+class BasicBlockBinDiff(DictMatchMixin, AlgorithmMixin, BasicBlockBinExport):
+    """
+    Diffed basic block. Enrich BasicBlockBinExport with the match and
+    algorithm attributes (and theirs associated methods)
+    """
+    pass
+
+
+class InstructionBinDiff(MatchMixin, InstructionBinExport):
+    """
+    Diff instruction. Simply add the match attribute to the
+    InstructionBinExport class
+    """
+    pass
