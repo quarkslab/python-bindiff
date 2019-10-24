@@ -1,6 +1,5 @@
 #from __future__ import annotations  #put it back when python 3.7 will be widely adopted
 from __future__ import absolute_import
-import os
 import sqlite3
 import logging
 import shutil
@@ -186,17 +185,17 @@ class BinDiff:
             logging.error("differ terminated with error code: %d" % retcode)
             return retcode
         # Now look for the generated file
-        out_file = tmp_dir / (os.path.splitext(f1.name)[0] + "_vs_" + os.path.splitext(f2.name)[0] + ".BinDiff")
+        out_file = tmp_dir / "{}_vs_{}.BinDiff".format(f1.stem, f2.stem)
         if out_file.exists():
-            os.rename(out_file.as_posix(), out_diff)
+            shutil.move(out_file, out_diff)
         else:  # try iterating the directory to find the .BinExport file
             candidates = list(tmp_dir.iterdir())
             if len(candidates) > 1:
                 logging.warning("the output directory not meant to contain multiple files")
             found = False
             for file in candidates:
-                if os.path.splitext(file.as_posix())[1] == ".BinExport":
-                    os.rename(file.as_posix(), out_diff)
+                if file.suffix == ".BinExport":
+                    shutil.move(file, out_diff)
                     found = True
                     break
             if not found:
@@ -217,8 +216,8 @@ class BinDiff:
         """
         p1 = ProgramBinExport.from_binary_file(p1_path)
         p2 = ProgramBinExport.from_binary_file(p2_path)
-        p1_binexport = os.path.splitext(p1_path)[0]+".BinExport"
-        p2_binexport = os.path.splitext(p2_path)[0]+".BinExport"
+        p1_binexport = Path(p1_path).with_suffix(".BinExport")
+        p2_binexport = Path(p2_path).with_suffix(".BinExport")
         if p1 and p2:
             retcode = BinDiff._start_diffing(p1_binexport, p2_binexport, diff_out)
             return BinDiff(p1, p2, diff_out) if retcode == 0 else None

@@ -2,16 +2,20 @@
 # coding: utf-8
 
 import logging
-import os.path
+import os
+from pathlib import Path
 import magic
 import click
 
-from bindiff import BinDiff
 
 BINARY_FORMAT = {'application/x-dosexec',
                  'application/x-sharedlib',
                  'application/x-mach-binary',
-                 'application/x-executable'}
+                 'application/x-executable',
+                 'application/x-pie-executable'}
+
+EXTENSIONS_WHITELIST = {'application/octet-stream': ['.dex']}
+
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'],
                         max_content_width=300)
@@ -35,21 +39,26 @@ def main(ida_path, bindiff_path, type, output, primary, secondary):
     logging.basicConfig(format='[%(levelname)s] %(message)s', level=logging.INFO)
 
     if ida_path:
-        os.environ['IDA_PATH'] = os.path.abspath(ida_path)
+        os.environ['IDA_PATH'] = Path(ida_path).resolve().as_posix()
 
     if bindiff_path:
-        os.environ['BINDIFF_PATH'] = os.path.abspath(bindiff_path)
+        os.environ['BINDIFF_PATH'] = Path(bindiff_path).resolve().as_posix()
+
+    # Import is deported here because we need to let the user choose the path
+    from bindiff import BinDiff
 
     if output is None:
-        output = (os.path.splitext(primary.name)[0] + "_vs_" + os.path.splitext(secondary.name)[0] + ".BinDiff")
+        output = '{}_vs_{}.BinDiff'.format(Path(primary).stem, Path(secondary).stem)
 
     diff = None
 
     if type == "bin":
-        if magic.from_file(primary, mime=True) not in BINARY_FORMAT or\
-                magic.from_file(secondary, mime=True) not in BINARY_FORMAT:
-            logging.error("the file is not an executable file")
-            exit(1)
+        for file in [primary, secondary]:
+            mime_type = magic.from_file(file, mime=True)
+            if mime_type not in BINARY_FORMAT and Path(file).suffix not in EXTENSIONS_WHITELIST.get(mime_type, []):
+                logging.error("One of the file is not an executable file")
+                exit(1)
+
         diff = BinDiff.from_binary_files(primary, secondary, output)
     else:
         diff = BinDiff.from_binexport_files(primary, secondary, output)
