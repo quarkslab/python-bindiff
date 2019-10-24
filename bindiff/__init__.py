@@ -2,36 +2,37 @@ import os
 from pathlib import Path
 
 BINDIFF_PATH_ENV = "BINDIFF_PATH"
-BIN_NAME = "differ"
+BIN_NAMES = ['bindiff', 'differ']
 BINDIFF_BINARY = None
+
+def __check_bin_names(path: Path) -> bool:
+    global BINDIFF_BINARY
+    for name in BIN_NAMES:
+        bin_path = path / name
+        if bin_path.exists():
+            BINDIFF_BINARY = bin_path.resolve().absolute()
+            return True
+
+    return False
 
 
 def __check_environ() -> bool:
-    global BINDIFF_BINARY
     if BINDIFF_PATH_ENV in os.environ:
-        if (Path(os.environ[BINDIFF_PATH_ENV]) / BIN_NAME).exists():
-            BINDIFF_BINARY = (Path(os.environ[BINDIFF_PATH_ENV]) / BIN_NAME).resolve()
-            return True
+        return __check_bin_names(Path(os.environ[BINDIFF_PATH_ENV]))
+
     return False
 
 
 def __check_default_path() -> bool:
-    global BINDIFF_BINARY
-    p = Path("/opt/zynamics/BinDiff/bin") / BIN_NAME
-    if p.exists():
-        BINDIFF_BINARY = p.resolve()
-        return True
-    else:
-        return False
+    return __check_bin_names(Path("/opt/zynamics/BinDiff/bin"))
 
 
 def __check_path() -> bool:
-    global BINDIFF_BINARY
     if "PATH" in os.environ:
         for p in os.environ["PATH"].split(":"):
-            if (Path(p) / BIN_NAME).exists():
-                BINDIFF_BINARY = (Path(p) / BIN_NAME).resolve()
+            if __check_bin_names(Path(p)):
                 return True
+
     return False
 
 
