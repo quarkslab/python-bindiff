@@ -2,7 +2,7 @@ import os
 from pathlib import Path
 
 BINDIFF_PATH_ENV = "BINDIFF_PATH"
-BIN_NAMES = ['bindiff', 'differ']
+BIN_NAMES = ['bindiff','bindiff.exe', 'differ']
 BINDIFF_BINARY = None
 
 def __check_bin_names(path: Path) -> bool:
@@ -29,7 +29,7 @@ def __check_default_path() -> bool:
 
 def __check_path() -> bool:
     if "PATH" in os.environ:
-        for p in os.environ["PATH"].split(":"):
+        for p in os.environ["PATH"].split(os.pathsep):
             if __check_bin_names(Path(p)):
                 return True
 
