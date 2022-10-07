@@ -216,8 +216,8 @@ class BinDiff:
         """
         p1 = ProgramBinExport.from_binary_file(p1_path)
         p2 = ProgramBinExport.from_binary_file(p2_path)
-        p1_binexport = Path(p1_path).with_suffix(".BinExport")
-        p2_binexport = Path(p2_path).with_suffix(".BinExport")
+        p1_binexport = Path(f"{p1_path}.BinExport")
+        p2_binexport = Path(f"{p2_path}.BinExport")
         if p1 and p2:
             retcode = BinDiff._start_diffing(p1_binexport, p2_binexport, diff_out)
             return BinDiff(p1, p2, diff_out) if retcode == 0 else None

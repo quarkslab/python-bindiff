@@ -12,6 +12,7 @@ BINARY_FORMAT = {'application/x-dosexec',
                  'application/x-sharedlib',
                  'application/x-mach-binary',
                  'application/x-executable',
+                 'application/x-object',
                  'application/x-pie-executable'}
 
 EXTENSIONS_WHITELIST = {'application/octet-stream': ['.dex']}
@@ -49,6 +50,11 @@ def main(ida_path, bindiff_path, type, output, primary, secondary):
 
     if output is None:
         output = '{}_vs_{}.BinDiff'.format(Path(primary).stem, Path(secondary).stem)
+
+    # Check that the output name is not too long
+    if len(output) > 255:
+        logging.error("Output file name is too long (%s).", output)
+        exit(1)
 
     diff = None
 
