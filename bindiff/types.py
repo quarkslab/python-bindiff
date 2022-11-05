@@ -1,7 +1,14 @@
 from enum import IntEnum
 from typing import Union, Optional
 
-from binexport.loader import ProgramBinExport, FunctionBinExport, BasicBlockBinExport, InstructionBinExport
+from binexport import ProgramBinExport, FunctionBinExport, BasicBlockBinExport, InstructionBinExport
+
+class BindiffNotFound(Exception):
+    """
+    Exception raised if Bindiff binary cannot be found
+    when trying to diff two binaries.
+    """
+    pass
 
 
 class BasicBlockAlgorithm(IntEnum):

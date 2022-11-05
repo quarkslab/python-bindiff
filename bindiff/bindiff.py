@@ -3,6 +3,7 @@ from __future__ import absolute_import
 import sqlite3
 import logging
 import shutil
+import os
 from datetime import datetime
 import subprocess
 import tempfile
@@ -11,9 +12,39 @@ from typing import Union, Optional, Dict, List, Tuple
 
 from binexport import ProgramBinExport
 
-from bindiff import BINDIFF_BINARY
-from bindiff.types import ProgramBinDiff, FunctionBinDiff, BasicBlockBinDiff, InstructionBinDiff
-from bindiff.types import BasicBlockAlgorithm, FunctionAlgorithm
+from bindiff.types import ProgramBinDiff, FunctionBinDiff, BasicBlockBinDiff, InstructionBinDiff, \
+                          BasicBlockAlgorithm, FunctionAlgorithm, BindiffNotFound
+
+
+
+BINDIFF_BINARY = None
+BINDIFF_PATH_ENV = "BINDIFF_PATH"
+BIN_NAMES = ['bindiff', 'bindiff.exe', 'differ']
+
+
+def _check_bin_names(path: Path) -> bool:
+    global BINDIFF_BINARY
+    for name in BIN_NAMES:
+        bin_path = path / name
+        if bin_path.exists():
+            BINDIFF_BINARY = bin_path.resolve().absolute()
+            return True
+    return False
+
+def _check_environ() -> bool:
+    if BINDIFF_PATH_ENV in os.environ:
+        return _check_bin_names(Path(os.environ[BINDIFF_PATH_ENV]))
+    return False
+
+def _check_default_path() -> bool:
+    return _check_bin_names(Path("/opt/zynamics/BinDiff/bin"))
+
+def _check_path() -> bool:
+    if "PATH" in os.environ:
+        for p in os.environ["PATH"].split(os.pathsep):
+            if _check_bin_names(Path(p)):
+                return True
+    return False
 
 
 class BinDiff:
@@ -49,7 +80,7 @@ class BinDiff:
         self.primary.similarity, self.secondary.similarity = self.similarity, self.similarity
         self.primary.confidence, self.secondary.confidence = self.confidence, self.confidence
 
-        #Extract all the data from the database
+        # Extract all the data from the database
         fun_query = "SELECT id, address1, address2, similarity, confidence, algorithm FROM function"
         funs = {x[0]: list(x[1:])+[{}] for x in conn.execute(fun_query)}
         query = "SELECT bb.functionid, bb.id, bb.address1, bb.address2, bb.algorithm, i.address1, i.address2 FROM " \
@@ -64,7 +95,8 @@ class BinDiff:
             self._load_function_info(*f_data)
         conn.close()
 
-    def _convert_program_classes(self, p: ProgramBinExport) -> None:
+    @staticmethod
+    def _convert_program_classes(p: ProgramBinExport) -> None:
         """
         Internal method to mutate a ProgramBinExport into ProgramBinDiff.
         :param p: program to mutate
@@ -109,7 +141,6 @@ class BinDiff:
         f1.confidence, f2.confidence = confidence, confidence
         f1.algorithm, f2.algorithm = FunctionAlgorithm(algo), FunctionAlgorithm(algo)
         f1.match, f2.match = f2, f1
-        #print("f1: 0x%x, f2: 0x%x (id:%d)" % (f1.addr, f2.addr, f_id))
         for bb_data in bbs_data.values():
             self._load_basic_block_info(f1, f2, *bb_data)
 
@@ -129,7 +160,6 @@ class BinDiff:
         :param inst_data: insturction data
         :return: None
         """
-        #print("bbid:%d bb_addr1:0x%x bb_addr:0x%x" % (bb_id, bb_addr1, bb_addr2))
         while inst_data:
             bb1, bb2 = f1[bb_addr1], f2[bb_addr2]
             if bb1.match or bb2.match:
@@ -141,7 +171,7 @@ class BinDiff:
                 i_addr1, i_addr2 = inst_data.pop(0)
                 try:
                     self._load_instruction_info(bb1[i_addr1], bb2[i_addr2])
-                except KeyError as e:
+                except KeyError as _:
                     # Both instruction should be in a new unmatched basic blocks (other make them orphan)
                     if i_addr1 not in bb1 and i_addr2 not in bb2:
                         bb_addr1 = i_addr1 if i_addr1 in f1 else [x.addr for x in f1.values() if i_addr1 in x][0]
@@ -165,7 +195,7 @@ class BinDiff:
         inst1.match, inst2.match = inst2, inst1
 
     @staticmethod
-    def _start_diffing(p1_path: str, p2_path: str, out_diff: str) -> int:
+    def _start_diffing(p1_path: Union[Path, str], p2_path: Union[Path, str], out_diff: str) -> int:
         """
         Static method to diff two binexport files against each other and storing
         the diffing result in the given file
@@ -174,6 +204,9 @@ class BinDiff:
         :param out_diff: diffing output file
         :return: int (0 if successfull, -x otherwise)
         """
+        # Make sure the bindiff binary is okay before doing any diffing
+        BinDiff.assert_installation_ok()
+
         tmp_dir = Path(tempfile.mkdtemp())
         f1 = Path(p1_path)
         f2 = Path(p2_path)
@@ -237,3 +270,31 @@ class BinDiff:
         """
         retcode = BinDiff._start_diffing(p1_binexport, p2_binexport, diff_out)
         return BinDiff(p1_binexport, p2_binexport, diff_out) if retcode == 0 else None
+
+    @staticmethod
+    def _configure_bindiff_path() -> None:
+        if not _check_environ():
+            if not _check_default_path():
+                if not _check_path():
+                    logging.warning(f"Can't find a valid bindiff executable. (should be available in PATH or"
+                                    f"as ${BINDIFF_PATH_ENV} env variable")
+
+    @staticmethod
+    def assert_installation_ok() -> None:
+        BinDiff._configure_bindiff_path()
+        if BINDIFF_BINARY is None:
+            raise BindiffNotFound()
+
+    @staticmethod
+    def is_installation_ok() -> bool:
+        """
+        Check that bindiff is properly installed and can be found
+        on the system.
+
+        :return: true if the bindiff binary can be found.
+        """
+        try:
+            BinDiff.assert_installation_ok()
+            return True
+        except BindiffNotFound:
+            return False
