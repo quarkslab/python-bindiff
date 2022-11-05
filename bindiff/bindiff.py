@@ -8,6 +8,7 @@ from datetime import datetime
 import subprocess
 import tempfile
 from pathlib import Path
+import ctypes
 from typing import Union, Optional, Dict, List, Tuple
 
 from binexport import ProgramBinExport
@@ -74,6 +75,10 @@ class BinDiff:
         self.modified = None
         self.single_match = []
 
+        # create function to convert signed int to unsigned
+        conv = ctypes.c_ulonglong if self.primary.architecture.endswith("64") else ctypes.c_ulong
+        i2u = lambda x: conv(x).value
+
         conn = sqlite3.connect('file:'+diff_file+'?mode=ro', uri=True)
         self._load_metadata(conn.cursor())
         # also set the similarity/confidence in case the user want to drop the BinDiff object
@@ -82,16 +87,17 @@ class BinDiff:
 
         # Extract all the data from the database
         fun_query = "SELECT id, address1, address2, similarity, confidence, algorithm FROM function"
-        funs = {x[0]: list(x[1:])+[{}] for x in conn.execute(fun_query)}
+        matches = {x[0]: [i2u(x[1]), i2u(x[2])]+list(x[3:])+[{}] for x in conn.execute(fun_query)}
         query = "SELECT bb.functionid, bb.id, bb.address1, bb.address2, bb.algorithm, i.address1, i.address2 FROM " \
                 "basicblock AS bb, instruction AS i WHERE bb.id == i.basicblockid"
-        for f_id, bb_id, bb_addr1, bb_addr2, bb_algo, i1, i2 in conn.execute(query):
-            if bb_id in funs[f_id][5]:
-                funs[f_id][5][bb_id][3].append((i1, i2))
+        for id, bb_id, bb_addr1, bb_addr2, bb_algo, i1, i2 in conn.execute(query):
+            bbs = matches[id][-1]
+            if bb_id in bbs: # add the instruction match
+                bbs[bb_id][3].append((i2u(i1), i2u(i2)))
             else:
-                funs[f_id][5][bb_id] = [bb_addr1, bb_addr2, bb_algo, [(i1, i2)]]
+                bbs[bb_id] = [i2u(bb_addr1), i2u(bb_addr2), bb_algo, [(i2u(i1), i2u(i2))]]
 
-        for f_data in funs.values():
+        for f_data in matches.values():
             self._load_function_info(*f_data)
         conn.close()
 
