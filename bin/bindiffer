@@ -6,6 +6,9 @@ import os
 from pathlib import Path
 import magic
 import click
+import sys
+
+from bindiff import BinDiff
 
 
 BINARY_FORMAT = {'application/x-dosexec',
@@ -45,8 +48,9 @@ def main(ida_path, bindiff_path, type, output, primary, secondary):
     if bindiff_path:
         os.environ['BINDIFF_PATH'] = Path(bindiff_path).resolve().as_posix()
 
-    # Import is deported here because we need to let the user choose the path
-    from bindiff import BinDiff
+    if not BinDiff.is_installation_ok():
+        logging.error("can't find bindiff executable (make sure its available in $PATH or via --bindiff-path")
+        sys.exit(1)
 
     if output is None:
         output = '{}_vs_{}.BinDiff'.format(Path(primary).stem, Path(secondary).stem)
@@ -55,8 +59,6 @@ def main(ida_path, bindiff_path, type, output, primary, secondary):
     if len(output) > 255:
         logging.error("Output file name is too long (%s).", output)
         exit(1)
-
-    diff = None
 
     if type == "bin":
         for file in [primary, secondary]:
