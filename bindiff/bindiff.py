@@ -201,7 +201,7 @@ class BinDiff:
         inst1.match, inst2.match = inst2, inst1
 
     @staticmethod
-    def _start_diffing(p1_path: Union[Path, str], p2_path: Union[Path, str], out_diff: str) -> int:
+    def raw_diffing(p1_path: Union[Path, str], p2_path: Union[Path, str], out_diff: str) -> bool:
         """
         Static method to diff two binexport files against each other and storing
         the diffing result in the given file
@@ -216,13 +216,18 @@ class BinDiff:
         tmp_dir = Path(tempfile.mkdtemp())
         f1 = Path(p1_path)
         f2 = Path(p2_path)
-        cmd_line = [BINDIFF_BINARY.as_posix(), '--primary=%s' % p1_path, '--secondary=%s' % p2_path,
-                    '--output_dir=%s' % tmp_dir.as_posix()]
+
+        cmd_line = [BINDIFF_BINARY.as_posix(),
+                    f"--primary={p1_path}",
+                    f"--secondary={p2_path}",
+                    f"--output_dir={tmp_dir.as_posix()}"]
+
+        logging.debug(f"run diffing: {' '.join(cmd_line)}")
         process = subprocess.Popen(cmd_line, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         retcode = process.wait()
         if retcode != 0:
-            logging.error("differ terminated with error code: %d" % retcode)
-            return retcode
+            logging.error(f"differ terminated with error code: {retcode}")
+            return False
         # Now look for the generated file
         out_file = tmp_dir / "{}_vs_{}.BinDiff".format(f1.stem, f2.stem)
         if out_file.exists():
@@ -239,9 +244,9 @@ class BinDiff:
                     break
             if not found:
                 logging.error("diff file .BinExport not found")
-                return -2
+                return False
         shutil.rmtree(tmp_dir, ignore_errors=True)
-        return 0
+        return True
 
     @staticmethod
     def from_binary_files(p1_path: str, p2_path: str, diff_out: str) -> Optional['BinDiff']:
@@ -258,7 +263,7 @@ class BinDiff:
         p1_binexport = Path(f"{p1_path}.BinExport")
         p2_binexport = Path(f"{p2_path}.BinExport")
         if p1 and p2:
-            retcode = BinDiff._start_diffing(p1_binexport, p2_binexport, diff_out)
+            retcode = BinDiff.raw_diffing(p1_binexport, p2_binexport, diff_out)
             return BinDiff(p1, p2, diff_out) if retcode == 0 else None
         else:
             logging.error("p1 or p2 could not have been 'binexported'")
@@ -274,7 +279,7 @@ class BinDiff:
         :param diff_out: output file for the diff
         :return: BinDiff object representing the diff
         """
-        retcode = BinDiff._start_diffing(p1_binexport, p2_binexport, diff_out)
+        retcode = BinDiff.raw_diffing(p1_binexport, p2_binexport, diff_out)
         return BinDiff(p1_binexport, p2_binexport, diff_out) if retcode == 0 else None
 
     @staticmethod
