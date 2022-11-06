@@ -45,6 +45,7 @@ class BasicBlockMatch:
     """
     Class holding a match between two basic blocks
     """
+    id: int
     function_match: FunctionMatch
     address1: int
     address2: int
@@ -107,6 +108,11 @@ class BindiffFile(object):
     def function_matches(self) -> List[FunctionMatch]:
         return list(self.primary_functions_match.values())
 
+    @property
+    def basicblock_matches(self) -> List[BasicBlockMatch]:
+        return [x for bb_matches in self.primary_basicblock_match.values() for x in bb_matches.values()]
+        # return list(self.primary_basicblock_match.values())
+
     def _load_file(self, cursor: sqlite3.Cursor) -> None:
         query = "SELECT * FROM file"
         self.primary = File(*cursor.execute(query).fetchone())
@@ -137,18 +143,38 @@ class BindiffFile(object):
     def _load_basicblock_match(self, cursor: sqlite3.Cursor) -> None:
         i2u = lambda x: ctypes.c_ulonglong(x).value
         mapping = {x.id: x for x in self.function_matches}
-        query = "SELECT functionid, address1, address2, algorithm FROM basicblock"
-        for id, bb_addr1, bb_addr2, bb_algo in cursor.execute(query):
-            bb_addr1, bb_addr2 = i2u(bb_addr1), i2u(bb_addr2)
-            bmatch = BasicBlockMatch(mapping[id], bb_addr1, bb_addr2, BasicBlockAlgorithm(bb_algo))
-            self.primary_basicblock_match[bb_addr1] = bmatch
-            self.secondary_basicblock_match[bb_addr2] = bmatch
+        query = "SELECT id, functionid, address1, address2, algorithm FROM basicblock"
+        for id, fun_id, bb_addr1, bb_addr2, bb_algo in cursor.execute(query):
+            fun_match = mapping[fun_id]
+            assert fun_id == mapping[fun_id].id
+            bmatch = BasicBlockMatch(id, fun_match, bb_addr1, bb_addr2, BasicBlockAlgorithm(bb_algo))
+
+            # As a basic block address can be in multiple functions create a nested dictionnary
+            if bb_addr1 in self.primary_basicblock_match:
+                self.primary_basicblock_match[bb_addr1][fun_match.address1] = bmatch
+            else:
+                self.primary_basicblock_match[bb_addr1] = {fun_match.address1: bmatch}
+
+            if bb_addr2 in self.secondary_basicblock_match:
+                self.secondary_basicblock_match[bb_addr2][fun_match.address2] = bmatch
+            else:
+                self.secondary_basicblock_match[bb_addr2] = {fun_match.address2: bmatch}
 
     def _load_instruction_match(self, cursor: sqlite3.Cursor) -> None:
         i2u = lambda x: ctypes.c_ulonglong(x).value
-        query = "SELECT address1, address2 FROM instruction"
-        for i_addr1, i_addr2 in cursor.execute(query):
+        mapping = {x.id: x for x in self.basicblock_matches}
+        query = "SELECT basicblockid, address1, address2 FROM instruction"
+        for id, i_addr1, i_addr2 in cursor.execute(query):
             i_addr1, i_addr2 = i2u(i_addr1), i2u(i_addr2)
-            self.primary_instruction_match[i_addr1] = i_addr2
-            self.secondary_instruction_match[i_addr2] = i_addr1
+            fun_match = mapping[id].function_match
 
+            # Set mapping for instructions
+            if i_addr1 in self.primary_instruction_match:
+                self.primary_instruction_match[i_addr1][fun_match.address1] = i_addr2
+            else:
+                self.primary_instruction_match[i_addr1] = {fun_match.address1: i_addr2}
+
+            if i_addr2 in self.secondary_instruction_match:
+                self.secondary_instruction_match[i_addr2][fun_match.address2] = i_addr1
+            else:
+                self.secondary_instruction_match[i_addr2] = {fun_match.address2: i_addr1}
