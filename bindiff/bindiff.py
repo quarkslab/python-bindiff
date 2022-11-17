@@ -194,7 +194,7 @@ class BinDiff(BindiffFile):
         p2_binexport = Path(f"{p2_path}.BinExport")
         if p1 and p2:
             retcode = BinDiff.raw_diffing(p1_binexport, p2_binexport, diff_out)
-            return BinDiff(p1, p2, diff_out) if retcode == 0 else None
+            return BinDiff(p1, p2, diff_out) if retcode else None
         else:
             logging.error("p1 or p2 could not have been 'binexported'")
             return None
@@ -210,7 +210,7 @@ class BinDiff(BindiffFile):
         :return: BinDiff object representing the diff
         """
         retcode = BinDiff.raw_diffing(p1_binexport, p2_binexport, diff_out)
-        return BinDiff(p1_binexport, p2_binexport, diff_out) if retcode == 0 else None
+        return BinDiff(p1_binexport, p2_binexport, diff_out) if retcode else None
 
     @staticmethod
     def _configure_bindiff_path() -> None:
