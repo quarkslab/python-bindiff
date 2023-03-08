@@ -7,7 +7,7 @@ setup(
     description='Python wrapper to manipulate bindiff files',
     author='Robin David',
     author_email='rdavid@quarkslab.com',
-    url='https://gitlab.qb/rdavid/python-bindiff',
+    url='https://github.com/quarkslab/python-bindiff',
     packages=['bindiff'],
     install_requires=[
         'python-magic',
