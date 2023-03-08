@@ -6,7 +6,7 @@ and manipulate bindiff between two binary iles.
 How it works ?
 --------------
 
-The module relies on python-binexport (https://gitlab.qb/rdavid/python-binexport)
+The module relies on [python-binexport](https://github.com/quarkslab/python-binexport)
 to extract programs .BinExport and then directly interact with the binary ``differ``
 (of zynamics) to perform the diff. The generated diff file is then correlated
 with the two binaries to be able to navigate the changes.
@@ -16,11 +16,9 @@ Dependencies
 
 Python bindiff relies on:
 
-* python-binexport (https://gitlab.qb/rdavid/python-binexport)
-
+* [python-binexport](https://github.com/quarkslab/python-binexport)
 * click *(for ``bindiffer``)*
 * python-magic *(for ``bindiffer``)*
-* python-binexport **and all its dependencies!**
 
 Usage as a python module
 ------------------------
