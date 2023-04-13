@@ -92,7 +92,9 @@ class BinDiff(BindiffFile):
 
         super(BinDiff, self).__init__(diff_file)
 
+        #: Primary BinExport object
         self.primary = ProgramBinExport(primary) if isinstance(primary, str) else primary
+        #: Secondary BinExport object
         self.secondary = ProgramBinExport(secondary) if isinstance(secondary, str) else secondary
         self._convert_program_classes(self.primary)
         self._convert_program_classes(self.secondary)
