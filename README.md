@@ -11,14 +11,11 @@ to extract programs .BinExport and then directly interact with the binary ``diff
 (of zynamics) to perform the diff. The generated diff file is then correlated
 with the two binaries to be able to navigate the changes.
 
-Dependencies
+Installation
 ------------
 
-Python bindiff relies on:
+    pip install python-bindiff
 
-* [python-binexport](https://github.com/quarkslab/python-binexport)
-* click *(for ``bindiffer``)*
-* python-magic *(for ``bindiffer``)*
 
 Usage as a python module
 ------------------------
