@@ -9,7 +9,6 @@ class BindiffNotFound(Exception):
     Exception raised if Bindiff binary cannot be found
     when trying to diff two binaries.
     """
-
     pass
 
 
@@ -86,7 +85,7 @@ class AlgorithmMixin(object):
 
 class SimilarityMixin(object):
     """
-    Mixing class to represent a similarity between to entities, with confidence level
+    Mixing class to represent a similarity between to entities, with confidence level.
     """
 
     _similarity = None
@@ -147,9 +146,8 @@ class ProgramBinDiff(DictMatchMixin, SimilarityMixin, ProgramBinExport):
     """
     Program class to represent a diffed binary. Basically enrich
     a ProgramBinExport class with match, similarity, confidence
-    attributes and the associated methods
+    attributes and the associated methods.
     """
-
     pass
 
 
@@ -158,14 +156,13 @@ class FunctionBinDiff(DictMatchMixin, AlgorithmMixin, SimilarityMixin, FunctionB
     Function class to represent a diffed function. Enrich FunctionBinExport
     with math, similarity, confidence and algorithm attributes.
     """
-
     pass
 
 
 class BasicBlockBinDiff(DictMatchMixin, AlgorithmMixin, BasicBlockBinExport):
     """
     Diffed basic block. Enrich BasicBlockBinExport with the match and
-    algorithm attributes (and theirs associated methods)
+    algorithm attributes (and theirs associated methods).
     """
     pass
 
@@ -173,7 +170,6 @@ class BasicBlockBinDiff(DictMatchMixin, AlgorithmMixin, BasicBlockBinExport):
 class InstructionBinDiff(MatchMixin, InstructionBinExport):
     """
     Diff instruction. Simply add the match attribute to the
-    InstructionBinExport class
+    InstructionBinExport class.
     """
-
     pass
