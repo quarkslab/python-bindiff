@@ -31,11 +31,17 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'],
 @click.option('-o', '--output', type=click.Path(), default=None, help="Output file matching")
 @click.argument("primary", type=click.Path(exists=True), metavar="<primary file>")
 @click.argument('secondary', type=click.Path(exists=True), metavar="<secondary file>")
-def main(ida_path, bindiff_path, output, primary, secondary):
+def main(ida_path: str, bindiff_path: str, output: str, primary: str, secondary: str) -> None:
     """
     bindiffer is a very simple utility to diff two binary files using BinDiff
     in command line. The two input files can be either binary files (in which
     case IDA is used) or directly .BinExport file (solely BinDiff is used).
+
+    :param ida_path: Path to the IDA pro folder
+    :param bindiff_path: Path to the BinDiff folder
+    :param output: Path for the output diffing file
+    :param primary: Path to the primary file
+    :param secondary: Path to the secondary file
     """
 
     logging.basicConfig(format='[%(levelname)s] %(message)s', level=logging.INFO)
