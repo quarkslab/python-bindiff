@@ -79,7 +79,7 @@ idascript). The help message is the following:
       -o, --output PATH        Output file matching
       -h, --help               Show this message and exit.
 
-To work bindiff ``differ`` binary should be in the $PATH, given via
+To work bindiff ``differ`` binary should be in the ``$PATH``, given via
 the ``BINDIFF_PATH`` environment variable or with the ``-b`` command option.
 Similarly when diff binaries directly the ida64 binary should be available
 in the $PATH, given with the ``IDA_PATH`` environment variable or via the

@@ -103,8 +103,6 @@ class BindiffFile(object):
     def unmatched_primary_count(self) -> int:
         """
         Returns the number of functions inside primary that are not matched
-
-        :return: int
         """
 
         return self.primary.functions + self.primary.libfunctions - len(self.primary_functions_match)
@@ -113,8 +111,6 @@ class BindiffFile(object):
     def unmatched_secondary_count(self) -> int:
         """
         Returns the number of functions inside secondary that are not matched
-
-        :return: int
         """
 
         return self.secondary.functions + self.secondary.libfunctions - len(self.primary_functions_match)
@@ -123,8 +119,6 @@ class BindiffFile(object):
     def function_matches(self) -> List[FunctionMatch]:
         """
         Returns the list of matched functions
-
-        :return: list of `FunctionMatch`
         """
 
         return list(self.primary_functions_match.values())
@@ -133,8 +127,6 @@ class BindiffFile(object):
     def basicblock_matches(self) -> List[BasicBlockMatch]:
         """
         Returns the list of matched basic blocks in primary (and secondary)
-
-        :return: list of `BasicBlockMatch`
         """
 
         return [x for bb_matches in self.primary_basicblock_match.values() for x in bb_matches.values()]
