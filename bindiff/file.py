@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Union, List
+from typing import List
 import sqlite3
 from datetime import datetime
 from dataclasses import dataclass
@@ -13,6 +13,7 @@ class File:
     """
     Represent files parsed
     """
+
     id: int
     filename: str
     exefilename: str
@@ -33,6 +34,7 @@ class FunctionMatch:
     """
     Class holding a match between two function.
     """
+
     id: int
     address1: int
     address2: int
@@ -40,11 +42,13 @@ class FunctionMatch:
     confidence: float
     algorithm: FunctionAlgorithm
 
+
 @dataclass
 class BasicBlockMatch:
     """
     Class holding a match between two basic blocks
     """
+
     id: int
     function_match: FunctionMatch
     address1: int
@@ -58,7 +62,6 @@ class BasicBlockMatch:
 #     basicblock2: BasicBlockMatch
 #     address1: int
 #     address2: int
-
 
 
 class BindiffFile(object):
@@ -98,22 +101,53 @@ class BindiffFile(object):
 
     @property
     def unmatched_primary_count(self) -> int:
+        """
+        Returns the number of functions inside primary that are not matched
+
+        :return: int
+        """
+
         return self.primary.functions + self.primary.libfunctions - len(self.primary_functions_match)
 
     @property
     def unmatched_secondary_count(self) -> int:
+        """
+        Returns the number of functions inside secondary that are not matched
+
+        :return: int
+        """
+
         return self.secondary.functions + self.secondary.libfunctions - len(self.primary_functions_match)
 
     @property
     def function_matches(self) -> List[FunctionMatch]:
+        """
+        Returns the list of matched functions
+
+        :return: list of `FunctionMatch`
+        """
+
         return list(self.primary_functions_match.values())
 
     @property
     def basicblock_matches(self) -> List[BasicBlockMatch]:
+        """
+        Returns the list of matched basic blocks in primary (and secondary)
+
+        :return: list of `BasicBlockMatch`
+        """
+
         return [x for bb_matches in self.primary_basicblock_match.values() for x in bb_matches.values()]
         # return list(self.primary_basicblock_match.values())
 
     def _load_file(self, cursor: sqlite3.Cursor) -> None:
+        """
+        Load diffing file stored in a DB file
+
+        :param cursor: sqlite3 cursor to the DB
+        :return: None
+        """
+
         query = "SELECT * FROM file"
         self.primary = File(*cursor.execute(query).fetchone())
         self.secondary = File(*cursor.execute(query).fetchone())
@@ -121,9 +155,11 @@ class BindiffFile(object):
     def _load_metadata(self, cursor: sqlite3.Cursor) -> None:
         """
         Load diffing metadata as stored in the DB file
+
         :param cursor: sqlite3 cursor to the DB
         :return: None
         """
+
         query = "SELECT created, modified, similarity, confidence FROM metadata"
         self.created, self.modified, self.similarity, self.confidence = cursor.execute(query).fetchone()
         self.created = datetime.strptime(self.created, "%Y-%m-%d %H:%M:%S")
@@ -132,6 +168,13 @@ class BindiffFile(object):
         self.confidence = float("{0:.3f}".format(self.confidence))  # round the value to 3 decimals
 
     def _load_function_match(self, cursor: sqlite3.Cursor) -> None:
+        """
+        Load matched functions stored in a DB file
+
+        :param cursor: sqlite3 cursor to the DB
+        :return: None
+        """
+
         i2u = lambda x: ctypes.c_ulonglong(x).value
         fun_query = "SELECT id, address1, address2, similarity, confidence, algorithm FROM function"
         for id, addr1, addr2, sim, conf, alg in cursor.execute(fun_query):
@@ -141,7 +184,13 @@ class BindiffFile(object):
             self.secondary_functions_match[addr2] = m
 
     def _load_basicblock_match(self, cursor: sqlite3.Cursor) -> None:
-        i2u = lambda x: ctypes.c_ulonglong(x).value
+        """
+        Load matched basic blocks stored in a DB file
+
+        :param cursor: sqlite3 cursor to the DB
+        :return: None
+        """
+
         mapping = {x.id: x for x in self.function_matches}
         query = "SELECT id, functionid, address1, address2, algorithm FROM basicblock"
         for id, fun_id, bb_addr1, bb_addr2, bb_algo in cursor.execute(query):
@@ -161,6 +210,13 @@ class BindiffFile(object):
                 self.secondary_basicblock_match[bb_addr2] = {fun_match.address2: bmatch}
 
     def _load_instruction_match(self, cursor: sqlite3.Cursor) -> None:
+        """
+        Load matched instructions stored in a DB file
+
+        :param cursor: sqlite3 cursor to the DB
+        :return: None
+        """
+
         i2u = lambda x: ctypes.c_ulonglong(x).value
         mapping = {x.id: x for x in self.basicblock_matches}
         query = "SELECT basicblockid, address1, address2 FROM instruction"

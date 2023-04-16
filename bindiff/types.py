@@ -3,19 +3,22 @@ from typing import Union, Optional
 
 from binexport import ProgramBinExport, FunctionBinExport, BasicBlockBinExport, InstructionBinExport
 
+
 class BindiffNotFound(Exception):
     """
     Exception raised if Bindiff binary cannot be found
     when trying to diff two binaries.
     """
+
     pass
 
 
 class BasicBlockAlgorithm(IntEnum):
     """
-    Basic block matching algorithm enum. (id's does not seems to change in
+    Basic block matching algorithm enum. (id's does not seem to change in
     bindiff so hardcoded here)
     """
+
     edges_prime_product = 1
     hash_matching_four_inst_min = 2
     prime_matching_four_inst_min = 3
@@ -40,9 +43,10 @@ class BasicBlockAlgorithm(IntEnum):
 
 class FunctionAlgorithm(IntEnum):
     """
-    Function matching algorithm enum. (id's does not seems to change in
+    Function matching algorithm enum. (id's does not seem to change in
     bindiff so hardcoded here)
     """
+
     name_hash_matching = 1
     hash_matching = 2
     edges_flowgraph_md_index = 3
@@ -68,6 +72,7 @@ class AlgorithmMixin(object):
     """
     Mixin class representing the matching algorithm as given by bindiff
     """
+
     _algorithm = None
 
     @property
@@ -81,8 +86,9 @@ class AlgorithmMixin(object):
 
 class SimilarityMixin(object):
     """
-    Mixing class to represent a similarity between to entities.
+    Mixing class to represent a similarity between to entities, with confidence level
     """
+
     _similarity = None
     _confidence = None
 
@@ -107,6 +113,7 @@ class MatchMixin(object):
     """
     Mixin class to represent a match between two object.
     """
+
     _match = None
 
     @property
@@ -142,6 +149,7 @@ class ProgramBinDiff(DictMatchMixin, SimilarityMixin, ProgramBinExport):
     a ProgramBinExport class with match, similarity, confidence
     attributes and the associated methods
     """
+
     pass
 
 
@@ -150,6 +158,7 @@ class FunctionBinDiff(DictMatchMixin, AlgorithmMixin, SimilarityMixin, FunctionB
     Function class to represent a diffed function. Enrich FunctionBinExport
     with math, similarity, confidence and algorithm attributes.
     """
+
     pass
 
 
@@ -166,4 +175,5 @@ class InstructionBinDiff(MatchMixin, InstructionBinExport):
     Diff instruction. Simply add the match attribute to the
     InstructionBinExport class
     """
+
     pass
