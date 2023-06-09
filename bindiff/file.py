@@ -60,10 +60,10 @@ class BasicBlockMatch:
 class BindiffFile(object):
     def __init__(self, file: Path | str, permission: str = "ro"):
         self._file = file
-
+        
         # Open database
         self.db = sqlite3.connect(f"file:{file}?mode={permission}", uri=True)
-
+        
         # Global variables
         self.similarity = None
         self.confidence = None
@@ -281,26 +281,29 @@ class BindiffFile(object):
         conn.execute("""INSERT INTO file (filename, exefilename, hash) VALUES (:filename, :name, :hash)""",
                      {"filename": str(file1), "name": file1.name, "hash": hash1})
 
+        
         # Save secondary
         file2 = Path(secondary)
         hash2 = hashlib.sha256(file2.read_bytes()).hexdigest() if file2.exists() else ""
         conn.execute("""INSERT INTO file (filename, exefilename, hash) VALUES (:filename, :name, :hash)""",
                      {"filename": str(file2), "name": file2.name, "hash": hash2})
-
+                
         conn.execute(
             """
-            INSERT INTO metadata (version, file1, file2, description, created, similarity, confidence)
-            VALUES (:version, 1, 2, :desc, :created, :similarity, :confidence)
+            INSERT INTO metadata (version, file1, file2, description, created, modified, similarity, confidence)
+            VALUES (:version, 1, 2, :desc, :created, :modified, :similarity, :confidence)
             """,
             {
                 "version": version,
                 "desc": desc,
                 "created": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "modified":datetime.now().strftime("%Y-%m-%d %H:%M:%S"), # modified has to be filled so initialize it to the creation time
                 "similarity": similarity,
                 "confidence": confidence
             }
         )
-
+        
+        db.commit()
         db.close()
         return BindiffFile(filename, permission="rw")
 
