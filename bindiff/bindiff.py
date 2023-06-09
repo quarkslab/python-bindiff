@@ -74,6 +74,8 @@ class BinDiff(BindiffFile):
     object so after loading the class can be dropped if needed.
 
     .. warning:: the two programs given are mutated into :py:class:`ProgramBinDiff` object
+                 which inherit :py:class:`SimilarityMixin` and :py:class:`DictMatchMixin` which provides
+                 additional attributes and method to the class.
     """
 
     def __init__(self, primary: Union[ProgramBinExport, str], secondary: Union[ProgramBinExport, str], diff_file: str):
@@ -99,7 +101,6 @@ class BinDiff(BindiffFile):
         Internal method to mutate a ProgramBinExport into ProgramBinDiff.
 
         :param p: program to mutate
-        :return: None (perform all the side effect on the program)
         """
         p.__class__ = ProgramBinDiff
         for f in p.values():
@@ -112,10 +113,7 @@ class BinDiff(BindiffFile):
     def _map_diff_on_programs(self) -> None:
         """
         From a diffing result, maps functions, basic blocks and instructions of primary and secondary
-
-        :return: None
         """
-
         # Map similarity and confidence on both programs
         self.primary.similarity, self.secondary.similarity = self.similarity, self.similarity
         self.primary.confidence, self.secondary.confidence = self.confidence, self.confidence
@@ -165,7 +163,7 @@ class BinDiff(BindiffFile):
         :param p1_path: primary file path
         :param p2_path: secondary file path
         :param out_diff: diffing output file
-        :return: int (0 if successfull, -x otherwise)
+        :return: True if successful, False otherwise
         """
 
         # Make sure the bindiff binary is okay before doing any diffing
@@ -248,8 +246,6 @@ class BinDiff(BindiffFile):
     def _configure_bindiff_path() -> None:
         """
         Check BinDiff access paths
-
-        :return: None
         """
         if not _check_environ():
             if not _check_default_path():

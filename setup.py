@@ -6,7 +6,7 @@ with open("README.md") as f:
 
 setup(
     name='python-bindiff',
-    version='0.1.0',
+    version='0.1.1',
     description='Python wrapper to manipulate bindiff files',
     author='Robin David',
     author_email='rdavid@quarkslab.com',
@@ -19,6 +19,7 @@ setup(
         "Bug Tracker": "https://github.com/quarkslab/python-bindiff/issues",
         "Source": "https://github.com/quarkslab/python-bindiff"
     },
+    python_requires='>=3.9',
     install_requires=[
         'python-magic',
         'click',
