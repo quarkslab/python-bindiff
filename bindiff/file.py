@@ -36,7 +36,9 @@ class FunctionMatch:
     """
     id: int            #: unique ID of function match in database
     address1: int      #: function address in primary
+    name1: str         #: function name in primary
     address2: int      #: function address in secondary
+    name2: str         #: function name in secondary
     similarity: float  #: similarity score (0..1)
     confidence: float  #: confidence of the match (0..1)
     algorithm: FunctionAlgorithm  #: algorithm used for the match
@@ -159,10 +161,10 @@ class BindiffFile(object):
         :param cursor: sqlite3 cursor to the DB
         """
         i2u = lambda x: ctypes.c_ulonglong(x).value
-        fun_query = "SELECT id, address1, address2, similarity, confidence, algorithm FROM function"
-        for id, addr1, addr2, sim, conf, alg in cursor.execute(fun_query):
+        fun_query = "SELECT id, address1, name1, address2, name2, similarity, confidence, algorithm FROM function"
+        for id, addr1, name1, addr2, name2, sim, conf, alg in cursor.execute(fun_query):
             addr1, addr2 = i2u(addr1), i2u(addr2)
-            m = FunctionMatch(id, addr1, addr2, sim, conf, FunctionAlgorithm(alg))
+            m = FunctionMatch(id, addr1, name1, addr2, name2, sim, conf, FunctionAlgorithm(alg))
             self.primary_functions_match[addr1] = m
             self.secondary_functions_match[addr2] = m
 
