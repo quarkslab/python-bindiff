@@ -84,8 +84,8 @@ class BindiffFile(object):
         self._load_metadata(self.db.cursor())
 
         # Files
-        self.primary: File = None    #: Primary file
-        self.secondary: File = None  #: Secondary file
+        self._primary: File = None    #: Primary file
+        self._secondary: File = None  #: Secondary file
         self._load_file(self.db.cursor())
 
         # Function matches
@@ -108,14 +108,14 @@ class BindiffFile(object):
         """
         Returns the number of functions inside primary that are not matched
         """
-        return self.primary.functions + self.primary.libfunctions - len(self.primary_functions_match)
+        return self._primary.functions + self._primary.libfunctions - len(self.primary_functions_match)
 
     @property
     def unmatched_secondary_count(self) -> int:
         """
         Returns the number of functions inside secondary that are not matched
         """
-        return self.secondary.functions + self.secondary.libfunctions - len(self.primary_functions_match)
+        return self._secondary.functions + self._secondary.libfunctions - len(self.primary_functions_match)
 
     @property
     def function_matches(self) -> list[FunctionMatch]:
@@ -138,8 +138,8 @@ class BindiffFile(object):
         :param cursor: sqlite3 cursor to the DB
         """
         query = "SELECT * FROM file"
-        self.primary = File(*cursor.execute(query).fetchone())
-        self.secondary = File(*cursor.execute(query).fetchone())
+        self._primary = File(*cursor.execute(query).fetchone())
+        self._secondary = File(*cursor.execute(query).fetchone())
 
     def _load_metadata(self, cursor: sqlite3.Cursor) -> None:
         """
