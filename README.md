@@ -14,7 +14,15 @@ with the two binaries to be able to navigate the changes.
 Installation
 ------------
 
+The python module requires Bindiff. Thus first refers to [Zynamics installation directives](https://www.zynamics.com/software.html).
+
+Then the python module can be installed with: 
+
     pip install python-bindiff
+
+The python module needs to execute the `differ` executable. As such it should be available:
+* either in the path
+* or via the ``BINDIFF_PATH`` environment variable
 
 
 Usage as a python module
