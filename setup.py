@@ -6,7 +6,7 @@ with open("README.md") as f:
 
 setup(
     name='python-bindiff',
-    version='0.1.4',
+    version='0.1.5',
     description='Python wrapper to manipulate bindiff files',
     author='Robin David',
     author_email='rdavid@quarkslab.com',
