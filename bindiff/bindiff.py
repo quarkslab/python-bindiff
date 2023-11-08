@@ -180,7 +180,8 @@ class BinDiff(BindiffFile):
 
         logging.debug(f"run diffing: {' '.join(cmd_line)}")
         process = subprocess.Popen(cmd_line, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        retcode = process.wait()
+        out, err = process.communicate()
+        retcode = process.returncode
         if retcode != 0:
             logging.error(f"differ terminated with error code: {retcode}")
             return False
