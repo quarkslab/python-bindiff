@@ -107,7 +107,7 @@ class BinDiff(BindiffFile):
             f.__class__ = FunctionBinDiff
             for bb in f.values():
                 bb.__class__ = BasicBlockBinDiff
-                for i in bb.values():
+                for i in bb.uncached_instructions.values():
                     i.__class__ = InstructionBinDiff
 
     def _map_diff_on_programs(self) -> None:
@@ -145,7 +145,7 @@ class BinDiff(BindiffFile):
                         bb_f1.algorithhm = bb_f2.algorithm = bb_match.algorithm
 
                         # Iterate instructions to map them
-                        for ins_f1 in bb_f1.values():
+                        for ins_f1 in bb_f1.uncached_instructions.values():
                             # Instruction is matched
                             if ins_f1.addr in self.primary_instruction_match:
                                 # Within the context of the current function
