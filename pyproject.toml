@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "python-bindiff"
+description = "Python wrapper to manipulate bindiff files"
+authors = [{ name = "Robin David", email = "rdavid@quarkslab.com" }]
+license = { text = "Apache Software License (Apache License, Version 2)" }
+readme = { file = "README.md", content-type = "text/markdown" }
+version = '0.1.5'
+requires-python = ">=3.9"
+dependencies = ['python-magic', 'click', 'python-binexport>=0.2.0']
+classifiers = [
+    'Topic :: Security',
+    'Environment :: Console',
+    'Operating System :: OS Independent',
+]
+
+[project.urls]
+Homepage = "https://github.com/quarkslab/python-bindiff"
+Repository = "https://github.com/quarkslab/python-bindiff"
+Documentation = "https://diffing.quarkslab.com/differs/bindiff.html#python-bindiff"
+"Bug Tracker" = "https://github.com/quarkslab/python-bindiff/issues"
+
+[tools.setuptools]
+script-files = ["bins/idascripter"]
+
+[tool.black]
+line-length = 100
+target-version = ['py310']
