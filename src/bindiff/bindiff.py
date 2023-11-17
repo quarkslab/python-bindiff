@@ -151,7 +151,7 @@ class BinDiff(BindiffFile):
                                 # Within the context of the current function
                                 if f1.addr in self.primary_instruction_match[ins_f1.addr]:
                                     ins_f2_addr = self.primary_instruction_match[ins_f1.addr][f1.addr]
-                                    ins_f2 = bb_f2[ins_f2_addr]  # retrieve instruction in secondary basic block
+                                    ins_f2 = bb_f2.uncached_instructions[ins_f2_addr]  # retrieve instruction in secondary basic block
                                     ins_f1.match, ins_f2.match = ins_f2, ins_f1
 
     @staticmethod
