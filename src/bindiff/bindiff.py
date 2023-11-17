@@ -145,13 +145,13 @@ class BinDiff(BindiffFile):
                         bb_f1.algorithhm = bb_f2.algorithm = bb_match.algorithm
 
                         # Iterate instructions to map them
-                        for ins_f1 in bb_f1.uncached_instructions.values():
+                        for ins_f1 in bb_f1.instructions.values():
                             # Instruction is matched
                             if ins_f1.addr in self.primary_instruction_match:
                                 # Within the context of the current function
                                 if f1.addr in self.primary_instruction_match[ins_f1.addr]:
                                     ins_f2_addr = self.primary_instruction_match[ins_f1.addr][f1.addr]
-                                    ins_f2 = bb_f2.uncached_instructions[ins_f2_addr]  # retrieve instruction in secondary basic block
+                                    ins_f2 = bb_f2.instructions[ins_f2_addr]  # retrieve instruction in secondary basic block
                                     ins_f1.match, ins_f2.match = ins_f2, ins_f1
 
     @staticmethod
