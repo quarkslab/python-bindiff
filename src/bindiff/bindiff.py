@@ -7,10 +7,10 @@ import tempfile
 from pathlib import Path
 from typing import Union, Optional
 
-from binexport import ProgramBinExport
+from binexport import ProgramBinExport, FunctionBinExport, BasicBlockBinExport, InstructionBinExport
 
-from bindiff.types import ProgramBinDiff, FunctionBinDiff, BasicBlockBinDiff, InstructionBinDiff, BindiffNotFound
-from bindiff import BindiffFile
+from bindiff.types import BindiffNotFound
+from bindiff.file import BindiffFile, FunctionMatch, BasicBlockMatch
 
 
 BINDIFF_BINARY = None
@@ -90,69 +90,85 @@ class BinDiff(BindiffFile):
         self.primary = ProgramBinExport(primary) if isinstance(primary, str) else primary
         #: Secondary BinExport object
         self.secondary = ProgramBinExport(secondary) if isinstance(secondary, str) else secondary
-        self._convert_program_classes(self.primary)
-        self._convert_program_classes(self.secondary)
 
-        self._map_diff_on_programs()
+    def primary_unmatched_function(self) -> list[FunctionBinExport]:
+        funs = []
+        for fun_addr, fun in self.primary.items():
+            if fun_addr not in self.primary_functions_match:
+                funs.append(fun)
+        return funs
 
-    @staticmethod
-    def _convert_program_classes(p: ProgramBinExport) -> None:
-        """
-        Internal method to mutate a ProgramBinExport into ProgramBinDiff.
+    def secondary_unmatched_function(self) -> list[FunctionBinExport]:
+        funs = []
+        for fun_addr, fun in self.primary.items():
+            if fun_addr not in self.primary_functions_match:
+                funs.append(fun)
+        return funs
 
-        :param p: program to mutate
-        """
-        p.__class__ = ProgramBinDiff
-        for f in p.values():
-            f.__class__ = FunctionBinDiff
-            for bb in f.values():
-                bb.__class__ = BasicBlockBinDiff
-                for i in bb.uncached_instructions.values():
-                    i.__class__ = InstructionBinDiff
+    def iter_function_matches(self) -> list[tuple[FunctionBinExport, FunctionBinExport, FunctionMatch]]:
+        return [(self.primary[match.address1], self.secondary[match.address2], match) \
+                for match in self.primary_functions_match.values()]
 
-    def _map_diff_on_programs(self) -> None:
-        """
-        From a diffing result, maps functions, basic blocks and instructions of primary and secondary
-        """
-        # Map similarity and confidence on both programs
-        self.primary.similarity, self.secondary.similarity = self.similarity, self.similarity
-        self.primary.confidence, self.secondary.confidence = self.confidence, self.confidence
+    def __unmatched_bbs(self, function: FunctionBinExport, map) -> list[BasicBlockBinExport]:
+        bbs = []
+        for bb_addr, bb in function.items():
+            if maps := map.get(bb_addr):
+                if function.addr not in maps:  # The block has been match but in another function thus unmatched here
+                    bbs.append(bb)
+                else:
+                    bbs.append(bb)
+        return bbs
 
-        for match in self.function_matches:
-            f1 = self.primary[match.address1]
-            f2 = self.secondary[match.address2]
-            f1.similarity = f2.similarity = match.similarity
-            f1.confidence = f2.confidence = match.confidence
-            f1.algorithm = f2.algorithm = match.algorithm
-            f1.match, f2.match = f2, f1
+    def primary_unmatched_basic_block(self, function: FunctionBinExport) -> list[BasicBlockBinExport]:
+        return self.__unmatched_bbs(function, self.primary_basicblock_match)
 
-            # print("Function:", f1)
-            for bb_f1 in f1.values():
+    def secondary_unmatched_basic_block(self, function: FunctionBinExport) -> list[BasicBlockBinExport]:
+        return self.__unmatched_bbs(function, self.secondary_basicblock_match)
 
-                # The basicblock is matched by a function
-                if bb_f1.addr in self.primary_basicblock_match:
-                    # The basicblock is matched within our function
-                    if f1.addr in self.primary_basicblock_match[bb_f1.addr]:
-                        # retrieve the match of the basic block
-                        bb_match = self.primary_basicblock_match[bb_f1.addr][f1.addr]
-                        assert match == bb_match.function_match
+    def iter_basicblock_matches(self,
+                           function1: FunctionBinExport,
+                           function2: FunctionBinExport
+    ) -> list[tuple[BasicBlockBinExport, BasicBlockBinExport, BasicBlockMatch]]:
+        items = []
+        for bb_addr, bb in function1.items():
+            if maps := self.primary_basicblock_match.get(bb_addr):
+                if match := maps.get(function1.addr):
+                    items.append((bb, function2[match.address2], match))
+        return items
 
-                        # retrieve basic block in secondary
-                        bb_f2 = f2[bb_match.address2]
+    def __unmatched_instrs(self, bb: BasicBlockBinExport, map) -> list[InstructionBinExport]:
+        instrs = []
+        for addr, instr in bb.instructions.items():
+            if addr not in map:
+                instrs.append(instr)
+        return instrs
 
-                        # Map info
-                        bb_f1.match, bb_f2.match = bb_f2, bb_f1
-                        bb_f1.algorithhm = bb_f2.algorithm = bb_match.algorithm
+    def primary_unmatched_instruction(self, bb: BasicBlockBinExport) -> list[InstructionBinExport]:
+        return self.__unmatched_instrs(bb, self.primary_instruction_match)
 
-                        # Iterate instructions to map them
-                        for ins_f1 in bb_f1.instructions.values():
-                            # Instruction is matched
-                            if ins_f1.addr in self.primary_instruction_match:
-                                # Within the context of the current function
-                                if f1.addr in self.primary_instruction_match[ins_f1.addr]:
-                                    ins_f2_addr = self.primary_instruction_match[ins_f1.addr][f1.addr]
-                                    ins_f2 = bb_f2.instructions[ins_f2_addr]  # retrieve instruction in secondary basic block
-                                    ins_f1.match, ins_f2.match = ins_f2, ins_f1
+    def secondary_unmatched_instruction(self, bb: BasicBlockBinExport) -> list[InstructionBinExport]:
+        return self.__unmatched_instrs(bb, self.secondary_instruction_match)
+
+    def iter_instruction_matches(self, block1: BasicBlockBinExport,
+                                 block2: BasicBlockBinExport) -> list[tuple[InstructionBinExport, InstructionBinExport]]:
+        insts = []
+        for addr, instr in block1.instructions.items():
+            if addr2 := self.primary_instruction_match.get(addr):
+                insts.append((instr, block2.instructions[addr2]))
+        return insts
+
+    def get_match(self, function: FunctionBinExport) -> tuple[FunctionBinExport, FunctionMatch] | None:
+        """ Accept both primary or secondary"""
+        if self.primary.get(function.addr) == function:  #
+            if match := self.primary_functions_match.get(function.addr):
+                return self.secondary[match.address2], match
+        elif self.secondary.get(function.addr) == function:
+            if match := self.secondary_functions_match.get(function.addr):
+                return self.primary[match.address1], match
+        return None
+
+    def is_matched(self, function: FunctionBinExport) -> bool:
+        return self.get_match(function) is not None
 
     @staticmethod
     def raw_diffing(p1_path: Union[Path, str], p2_path: Union[Path, str], out_diff: str) -> bool:

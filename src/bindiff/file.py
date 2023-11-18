@@ -93,7 +93,7 @@ class BindiffFile(object):
         self.secondary_functions_match: dict[int, FunctionMatch] = {}  #: FunctionMatch indexed by addresses in secondary
         self._load_function_match(self.db.cursor())
 
-        # Basicblock matches
+        # Basicblock matches:  BB-addr -> fun-addr -> match
         self.primary_basicblock_match: dict[int, dict[int, BasicBlockMatch]] = {}    #: Basic block match from primary
         self.secondary_basicblock_match: dict[int, dict[int, BasicBlockMatch]] = {}  #: Basic block match from secondary
         self._load_basicblock_match(self.db.cursor())
