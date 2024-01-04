@@ -92,6 +92,11 @@ class BinDiff(BindiffFile):
         self.secondary = ProgramBinExport(secondary) if isinstance(secondary, str) else secondary
 
     def primary_unmatched_function(self) -> list[FunctionBinExport]:
+        """
+        Return a list of the unmatched functions in the primary program.
+        
+        :return: list of unmatched functions in primary
+        """
         funs = []
         for fun_addr, fun in self.primary.items():
             if fun_addr not in self.primary_functions_match:
@@ -99,6 +104,11 @@ class BinDiff(BindiffFile):
         return funs
 
     def secondary_unmatched_function(self) -> list[FunctionBinExport]:
+        """
+        Return a list of the unmatched functions in the secondary program.
+        
+        :return: list of unmatched functions in secondary
+        """
         funs = []
         for fun_addr, fun in self.primary.items():
             if fun_addr not in self.primary_functions_match:
@@ -106,10 +116,18 @@ class BinDiff(BindiffFile):
         return funs
 
     def iter_function_matches(self) -> list[tuple[FunctionBinExport, FunctionBinExport, FunctionMatch]]:
+        """
+        Return a list of all the matched functions. Each element of the list is a tuple containing
+        the function in the primary program, the matched function in the secondary program and the
+        FunctionMatch object describing the match
+
+        :return: list of tuple, each containing the primary function, the secondary function and
+                 the FunctionMatch object
+        """
         return [(self.primary[match.address1], self.secondary[match.address2], match) \
                 for match in self.primary_functions_match.values()]
 
-    def __unmatched_bbs(self, function: FunctionBinExport, map) -> list[BasicBlockBinExport]:
+    def _unmatched_bbs(self, function: FunctionBinExport, map: dict[Addr, dict[Addr, BasicBlockMatch]]) -> list[BasicBlockBinExport]:
         bbs = []
         for bb_addr, bb in function.items():
             if maps := map.get(bb_addr):
@@ -120,15 +138,41 @@ class BinDiff(BindiffFile):
         return bbs
 
     def primary_unmatched_basic_block(self, function: FunctionBinExport) -> list[BasicBlockBinExport]:
-        return self.__unmatched_bbs(function, self.primary_basicblock_match)
+        """
+        Return a list of the unmatched basic blocks in the provided function.
+        The function must be part of the primary program.
+        
+        :param function: A function of the primary program
+        :return: list of unmatched basic blocks
+        """
+        return self._unmatched_bbs(function, self.primary_basicblock_match)
 
     def secondary_unmatched_basic_block(self, function: FunctionBinExport) -> list[BasicBlockBinExport]:
-        return self.__unmatched_bbs(function, self.secondary_basicblock_match)
+        """
+        Return a list of the unmatched basic blocks in the provided function.
+        The function must be part of the secondary program.
+        
+        :param function: A function of the secondary program
+        :return: list of unmatched basic blocks
+        """
+        return self._unmatched_bbs(function, self.secondary_basicblock_match)
 
     def iter_basicblock_matches(self,
                            function1: FunctionBinExport,
                            function2: FunctionBinExport
     ) -> list[tuple[BasicBlockBinExport, BasicBlockBinExport, BasicBlockMatch]]:
+        """
+        Return a list of all the matched basic blocks between the two provided functions.
+        Each element of the list is a tuple containing the basic blocks of the primary and secondary
+        functions and the BasicBlockMatch object describing the match.
+        The first function must be part of the primary program while the second function must be
+        part of the secondary program.
+        
+        :param function1: A function of the primary program
+        :param function2: A function of the secondary program
+        :return: list of tuple, each containing the primary basic block, the secondary basic block
+                 and the BasicBlockMatch object
+        """
         items = []
         for bb_addr, bb in function1.items():
             if maps := self.primary_basicblock_match.get(bb_addr):
@@ -136,7 +180,7 @@ class BinDiff(BindiffFile):
                     items.append((bb, function2[match.address2], match))
         return items
 
-    def __unmatched_instrs(self, bb: BasicBlockBinExport, map) -> list[InstructionBinExport]:
+    def _unmatched_instrs(self, bb: BasicBlockBinExport, map: dict[Addr, dict[Addr, Addr]]) -> list[InstructionBinExport]:
         instrs = []
         for addr, instr in bb.instructions.items():
             if addr not in map:
@@ -144,13 +188,38 @@ class BinDiff(BindiffFile):
         return instrs
 
     def primary_unmatched_instruction(self, bb: BasicBlockBinExport) -> list[InstructionBinExport]:
-        return self.__unmatched_instrs(bb, self.primary_instruction_match)
+        """
+        Return a list of the unmatched instructions in the provided basic block.
+        The basic block must be part of the primary program.
+        
+        :param bb: A basic block belonging to the primary program
+        :return: list of unmatched instructions
+        """
+        return self._unmatched_instrs(bb, self.primary_instruction_match)
 
     def secondary_unmatched_instruction(self, bb: BasicBlockBinExport) -> list[InstructionBinExport]:
-        return self.__unmatched_instrs(bb, self.secondary_instruction_match)
+        """
+        Return a list of the unmatched instructions in the provided basic block.
+        The basic block must be part of the secondary program.
+        
+        :param bb: A basic block belonging to the secondary program
+        :return: list of unmatched instructions
+        """
+        return self._unmatched_instrs(bb, self.secondary_instruction_match)
 
     def iter_instruction_matches(self, block1: BasicBlockBinExport,
                                  block2: BasicBlockBinExport) -> list[tuple[InstructionBinExport, InstructionBinExport]]:
+        """
+        Return a list of all the matched instructions between the two provided basic blocks.
+        Each element of the list is a tuple containing the instructions of the primary and secondary
+        basic blocks.
+        The first basic block must belong to the primary program while the second one must be
+        part of the secondary program.
+        
+        :param block1: A basic block belonging to the primary program
+        :param block2: A basic block belonging to the secondary program
+        :return: list of tuple, each containing the primary instruction and the secondary instruction
+        """
         insts = []
         for addr, instr in block1.instructions.items():
             if addr2 := self.primary_instruction_match.get(addr):
@@ -158,8 +227,14 @@ class BinDiff(BindiffFile):
         return insts
 
     def get_match(self, function: FunctionBinExport) -> tuple[FunctionBinExport, FunctionMatch] | None:
-        """ Accept both primary or secondary"""
-        if self.primary.get(function.addr) == function:  #
+        """
+        Get the function that matches the provided one.
+        
+        :param function: A function that belongs either to primary or secondary
+        :return: A tuple with the matched function and the match object if there is a match for
+                 the provided function, otherwise None
+        """
+        if self.primary.get(function.addr) == function:
             if match := self.primary_functions_match.get(function.addr):
                 return self.secondary[match.address2], match
         elif self.secondary.get(function.addr) == function:
@@ -168,6 +243,10 @@ class BinDiff(BindiffFile):
         return None
 
     def is_matched(self, function: FunctionBinExport) -> bool:
+        """
+        :param function: A function that belongs either to primary or secondary.
+        :return: True if there is a match for the provided function, False otherwise
+        """
         return self.get_match(function) is not None
 
     @staticmethod
