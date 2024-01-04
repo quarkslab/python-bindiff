@@ -110,8 +110,8 @@ class BinDiff(BindiffFile):
         :return: list of unmatched functions in secondary
         """
         funs = []
-        for fun_addr, fun in self.primary.items():
-            if fun_addr not in self.primary_functions_match:
+        for fun_addr, fun in self.secondary.items():
+            if fun_addr not in self.secondary_functions_match:
                 funs.append(fun)
         return funs
 
