@@ -15,7 +15,7 @@ from bindiff.file import BindiffFile, FunctionMatch, BasicBlockMatch
 
 BINDIFF_BINARY = None
 BINDIFF_PATH_ENV = "BINDIFF_PATH"
-BIN_NAMES = ['bindiff', 'bindiff.exe', 'differ']
+BIN_NAMES = ["bindiff", "bindiff.exe", "differ"]
 
 
 def _check_bin_names(path: Path) -> bool:
@@ -48,7 +48,7 @@ def _check_environ() -> bool:
 def _check_default_path() -> bool:
     """
     Check if BinDiff is installed at its default location
-    
+
     :return: bool
     """
     return _check_bin_names(Path("/opt/zynamics/BinDiff/bin"))
@@ -78,7 +78,12 @@ class BinDiff(BindiffFile):
                  additional attributes and method to the class.
     """
 
-    def __init__(self, primary: Union[ProgramBinExport, str], secondary: Union[ProgramBinExport, str], diff_file: str):
+    def __init__(
+        self,
+        primary: Union[ProgramBinExport, str],
+        secondary: Union[ProgramBinExport, str],
+        diff_file: str,
+    ):
         """
         :param primary: first program diffed
         :param secondary: second program diffed
@@ -94,7 +99,7 @@ class BinDiff(BindiffFile):
     def primary_unmatched_function(self) -> list[FunctionBinExport]:
         """
         Return a list of the unmatched functions in the primary program.
-        
+
         :return: list of unmatched functions in primary
         """
         funs = []
@@ -106,7 +111,7 @@ class BinDiff(BindiffFile):
     def secondary_unmatched_function(self) -> list[FunctionBinExport]:
         """
         Return a list of the unmatched functions in the secondary program.
-        
+
         :return: list of unmatched functions in secondary
         """
         funs = []
@@ -115,7 +120,9 @@ class BinDiff(BindiffFile):
                 funs.append(fun)
         return funs
 
-    def iter_function_matches(self) -> list[tuple[FunctionBinExport, FunctionBinExport, FunctionMatch]]:
+    def iter_function_matches(
+        self,
+    ) -> list[tuple[FunctionBinExport, FunctionBinExport, FunctionMatch]]:
         """
         Return a list of all the matched functions. Each element of the list is a tuple containing
         the function in the primary program, the matched function in the secondary program and the
@@ -124,42 +131,50 @@ class BinDiff(BindiffFile):
         :return: list of tuple, each containing the primary function, the secondary function and
                  the FunctionMatch object
         """
-        return [(self.primary[match.address1], self.secondary[match.address2], match) \
-                for match in self.primary_functions_match.values()]
+        return [
+            (self.primary[match.address1], self.secondary[match.address2], match)
+            for match in self.primary_functions_match.values()
+        ]
 
-    def _unmatched_bbs(self, function: FunctionBinExport, map: dict[int, dict[int, BasicBlockMatch]]) -> list[BasicBlockBinExport]:
+    def _unmatched_bbs(
+        self, function: FunctionBinExport, map: dict[int, dict[int, BasicBlockMatch]]
+    ) -> list[BasicBlockBinExport]:
         bbs = []
         for bb_addr, bb in function.items():
             if maps := map.get(bb_addr):
-                if function.addr not in maps:  # The block has been match but in another function thus unmatched here
+                # The block has been match but in another function thus unmatched here
+                if function.addr not in maps:
                     bbs.append(bb)
                 else:
                     bbs.append(bb)
         return bbs
 
-    def primary_unmatched_basic_block(self, function: FunctionBinExport) -> list[BasicBlockBinExport]:
+    def primary_unmatched_basic_block(
+        self, function: FunctionBinExport
+    ) -> list[BasicBlockBinExport]:
         """
         Return a list of the unmatched basic blocks in the provided function.
         The function must be part of the primary program.
-        
+
         :param function: A function of the primary program
         :return: list of unmatched basic blocks
         """
         return self._unmatched_bbs(function, self.primary_basicblock_match)
 
-    def secondary_unmatched_basic_block(self, function: FunctionBinExport) -> list[BasicBlockBinExport]:
+    def secondary_unmatched_basic_block(
+        self, function: FunctionBinExport
+    ) -> list[BasicBlockBinExport]:
         """
         Return a list of the unmatched basic blocks in the provided function.
         The function must be part of the secondary program.
-        
+
         :param function: A function of the secondary program
         :return: list of unmatched basic blocks
         """
         return self._unmatched_bbs(function, self.secondary_basicblock_match)
 
-    def iter_basicblock_matches(self,
-                           function1: FunctionBinExport,
-                           function2: FunctionBinExport
+    def iter_basicblock_matches(
+        self, function1: FunctionBinExport, function2: FunctionBinExport
     ) -> list[tuple[BasicBlockBinExport, BasicBlockBinExport, BasicBlockMatch]]:
         """
         Return a list of all the matched basic blocks between the two provided functions.
@@ -167,7 +182,7 @@ class BinDiff(BindiffFile):
         functions and the BasicBlockMatch object describing the match.
         The first function must be part of the primary program while the second function must be
         part of the secondary program.
-        
+
         :param function1: A function of the primary program
         :param function2: A function of the secondary program
         :return: list of tuple, each containing the primary basic block, the secondary basic block
@@ -180,7 +195,9 @@ class BinDiff(BindiffFile):
                     items.append((bb, function2[match.address2], match))
         return items
 
-    def _unmatched_instrs(self, bb: BasicBlockBinExport, map: dict[int, dict[int, int]]) -> list[InstructionBinExport]:
+    def _unmatched_instrs(
+        self, bb: BasicBlockBinExport, map: dict[int, dict[int, int]]
+    ) -> list[InstructionBinExport]:
         instrs = []
         for addr, instr in bb.instructions.items():
             if addr not in map:
@@ -191,31 +208,34 @@ class BinDiff(BindiffFile):
         """
         Return a list of the unmatched instructions in the provided basic block.
         The basic block must be part of the primary program.
-        
+
         :param bb: A basic block belonging to the primary program
         :return: list of unmatched instructions
         """
         return self._unmatched_instrs(bb, self.primary_instruction_match)
 
-    def secondary_unmatched_instruction(self, bb: BasicBlockBinExport) -> list[InstructionBinExport]:
+    def secondary_unmatched_instruction(
+        self, bb: BasicBlockBinExport
+    ) -> list[InstructionBinExport]:
         """
         Return a list of the unmatched instructions in the provided basic block.
         The basic block must be part of the secondary program.
-        
+
         :param bb: A basic block belonging to the secondary program
         :return: list of unmatched instructions
         """
         return self._unmatched_instrs(bb, self.secondary_instruction_match)
 
-    def iter_instruction_matches(self, block1: BasicBlockBinExport,
-                                 block2: BasicBlockBinExport) -> list[tuple[InstructionBinExport, InstructionBinExport]]:
+    def iter_instruction_matches(
+        self, block1: BasicBlockBinExport, block2: BasicBlockBinExport
+    ) -> list[tuple[InstructionBinExport, InstructionBinExport]]:
         """
         Return a list of all the matched instructions between the two provided basic blocks.
         Each element of the list is a tuple containing the instructions of the primary and secondary
         basic blocks.
         The first basic block must belong to the primary program while the second one must be
         part of the secondary program.
-        
+
         :param block1: A basic block belonging to the primary program
         :param block2: A basic block belonging to the secondary program
         :return: list of tuple, each containing the primary instruction and the secondary instruction
@@ -226,10 +246,12 @@ class BinDiff(BindiffFile):
                 insts.append((instr, block2.instructions[addr2]))
         return insts
 
-    def get_match(self, function: FunctionBinExport) -> tuple[FunctionBinExport, FunctionMatch] | None:
+    def get_match(
+        self, function: FunctionBinExport
+    ) -> tuple[FunctionBinExport, FunctionMatch] | None:
         """
         Get the function that matches the provided one.
-        
+
         :param function: A function that belongs either to primary or secondary
         :return: A tuple with the matched function and the match object if there is a match for
                  the provided function, otherwise None
@@ -268,10 +290,12 @@ class BinDiff(BindiffFile):
         f1 = Path(p1_path)
         f2 = Path(p2_path)
 
-        cmd_line = [BINDIFF_BINARY.as_posix(),
-                    f"--primary={p1_path}",
-                    f"--secondary={p2_path}",
-                    f"--output_dir={tmp_dir.as_posix()}"]
+        cmd_line = [
+            BINDIFF_BINARY.as_posix(),
+            f"--primary={p1_path}",
+            f"--secondary={p2_path}",
+            f"--output_dir={tmp_dir.as_posix()}",
+        ]
 
         logging.debug(f"run diffing: {' '.join(cmd_line)}")
         process = subprocess.Popen(cmd_line, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -301,7 +325,7 @@ class BinDiff(BindiffFile):
         return True
 
     @staticmethod
-    def from_binary_files(p1_path: str, p2_path: str, diff_out: str) -> Optional['BinDiff']:
+    def from_binary_files(p1_path: str, p2_path: str, diff_out: str) -> Optional["BinDiff"]:
         """
         Diff two executable files. Thus it export .BinExport files from IDA
         and then diff the two resulting files in BinDiff.
@@ -324,7 +348,9 @@ class BinDiff(BindiffFile):
             return None
 
     @staticmethod
-    def from_binexport_files(p1_binexport: str, p2_binexport: str, diff_out: str) -> Optional['BinDiff']:
+    def from_binexport_files(
+        p1_binexport: str, p2_binexport: str, diff_out: str
+    ) -> Optional["BinDiff"]:
         """
         Diff two binexport files. Diff the two binexport files with bindiff
         and then load a BinDiff instance.
@@ -346,8 +372,10 @@ class BinDiff(BindiffFile):
         if not _check_environ():
             if not _check_default_path():
                 if not _check_path():
-                    logging.warning(f"Can't find a valid bindiff executable. (should be available in PATH or"
-                                    f"as ${BINDIFF_PATH_ENV} env variable")
+                    logging.warning(
+                        f"Can't find a valid bindiff executable. (should be available in PATH or"
+                        f"as ${BINDIFF_PATH_ENV} env variable"
+                    )
 
     @staticmethod
     def assert_installation_ok() -> None:

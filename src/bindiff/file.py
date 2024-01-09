@@ -14,6 +14,8 @@ class File:
     """
     File diffed in database.
     """
+
+    # fmt: off
     id: int             #: Unique ID of the file in database
     filename: str       #: file path
     exefilename: str    #: file name
@@ -26,7 +28,7 @@ class File:
     edges: int          #: number of edges in callgraph
     libedges: int       #: number of edges in callgraph addressing a library
     instructions: int   #: number of instructions
-    libinstructions: int  #: number of instructions in library functions
+    # fmt: on
 
 
 @dataclass
@@ -34,14 +36,17 @@ class FunctionMatch:
     """
     A match between two functions in database.
     """
-    id: int            #: unique ID of function match in database
-    address1: int      #: function address in primary
-    name1: str         #: function name in primary
-    address2: int      #: function address in secondary
-    name2: str         #: function name in secondary
-    similarity: float  #: similarity score (0..1)
-    confidence: float  #: confidence of the match (0..1)
+
+    # fmt: off
+    id: int                       #: unique ID of function match in database
+    address1: int                 #: function address in primary
+    name1: str                    #: function name in primary
+    address2: int                 #: function address in secondary
+    name2: str                    #: function name in secondary
+    similarity: float             #: similarity score (0..1)
+    confidence: float             #: confidence of the match (0..1)
     algorithm: FunctionAlgorithm  #: algorithm used for the match
+    # fmt: on
 
 
 @dataclass
@@ -49,11 +54,14 @@ class BasicBlockMatch:
     """
     A match between two basic blocks
     """
-    id: int  #: ID of the match in database
-    function_match: FunctionMatch  #: FunctionMatch associated with this match
-    address1: int  #: basic block address in primary
-    address2: int  #: basic block address in secondary
+
+    # fmt: off
+    id: int                         #: ID of the match in database
+    function_match: FunctionMatch   #: FunctionMatch associated with this match
+    address1: int                   #: basic block address in primary
+    address2: int                   #: basic block address in secondary
     algorithm: BasicBlockAlgorithm  #: algorithm used to match the basic blocks
+    # fmt: on
 
 
 class BindiffFile(object):
@@ -65,16 +73,18 @@ class BindiffFile(object):
     It also provides some methods to create a database and to add entries
     in the database.
     """
+
     def __init__(self, file: Union[Path, str], permission: str = "ro"):
         """
         :param file: path to Bindiff database
         :param permission: permission to use for opening database (default: ro)
         """
         self._file = file
-        
+
         # Open database
         self.db = sqlite3.connect(f"file:{str(file)}?mode={permission}", uri=True)
-        
+
+        # fmt: off
         # Global variables
         self.similarity: float = None  #: Overall similarity
         self.confidence: float = None  #: Overall diffing confidence
@@ -87,15 +97,24 @@ class BindiffFile(object):
         self.primary_file: File = None    #: Primary file
         self.secondary_file: File = None  #: Secondary file
         self._load_file(self.db.cursor())
+        # fmt: on
 
         # Function matches
-        self.primary_functions_match: dict[int, FunctionMatch] = {}    #: FunctionMatch indexed by addresses in primary
-        self.secondary_functions_match: dict[int, FunctionMatch] = {}  #: FunctionMatch indexed by addresses in secondary
+        self.primary_functions_match: dict[
+            int, FunctionMatch
+        ] = {}  #: FunctionMatch indexed by addresses in primary
+        self.secondary_functions_match: dict[
+            int, FunctionMatch
+        ] = {}  #: FunctionMatch indexed by addresses in secondary
         self._load_function_match(self.db.cursor())
 
         # Basicblock matches:  BB-addr -> fun-addr -> match
-        self.primary_basicblock_match: dict[int, dict[int, BasicBlockMatch]] = {}    #: Basic block match from primary
-        self.secondary_basicblock_match: dict[int, dict[int, BasicBlockMatch]] = {}  #: Basic block match from secondary
+        self.primary_basicblock_match: dict[
+            int, dict[int, BasicBlockMatch]
+        ] = {}  #: Basic block match from primary
+        self.secondary_basicblock_match: dict[
+            int, dict[int, BasicBlockMatch]
+        ] = {}  #: Basic block match from secondary
         self._load_basicblock_match(self.db.cursor())
 
         # Instruction matches
@@ -109,14 +128,22 @@ class BindiffFile(object):
         """
         Returns the number of functions inside primary that are not matched
         """
-        return self.primary_file.functions + self.primary_file.libfunctions - len(self.primary_functions_match)
+        return (
+            self.primary_file.functions
+            + self.primary_file.libfunctions
+            - len(self.primary_functions_match)
+        )
 
     @property
     def unmatched_secondary_count(self) -> int:
         """
         Returns the number of functions inside secondary that are not matched
         """
-        return self.secondary_file.functions + self.secondary_file.libfunctions - len(self.primary_functions_match)
+        return (
+            self.secondary_file.functions
+            + self.secondary_file.libfunctions
+            - len(self.primary_functions_match)
+        )
 
     @property
     def function_matches(self) -> list[FunctionMatch]:
@@ -130,7 +157,9 @@ class BindiffFile(object):
         """
         Returns the list of matched basic blocks in primary (and secondary)
         """
-        return [x for bb_matches in self.primary_basicblock_match.values() for x in bb_matches.values()]
+        return [
+            x for bb_matches in self.primary_basicblock_match.values() for x in bb_matches.values()
+        ]
 
     def _load_file(self, cursor: sqlite3.Cursor) -> None:
         """
@@ -149,7 +178,9 @@ class BindiffFile(object):
         :param cursor: sqlite3 cursor to the DB
         """
         query = "SELECT created, modified, similarity, confidence FROM metadata"
-        self.created, self.modified, self.similarity, self.confidence = cursor.execute(query).fetchone()
+        self.created, self.modified, self.similarity, self.confidence = cursor.execute(
+            query
+        ).fetchone()
         self.created = datetime.strptime(self.created, "%Y-%m-%d %H:%M:%S")
         self.modified = datetime.strptime(self.modified, "%Y-%m-%d %H:%M:%S")
         self.similarity = float("{0:.3f}".format(self.similarity))  # round the value to 3 decimals
@@ -180,7 +211,9 @@ class BindiffFile(object):
         for id, fun_id, bb_addr1, bb_addr2, bb_algo in cursor.execute(query):
             fun_match = mapping[fun_id]
             assert fun_id == mapping[fun_id].id
-            bmatch = BasicBlockMatch(id, fun_match, bb_addr1, bb_addr2, BasicBlockAlgorithm(bb_algo))
+            bmatch = BasicBlockMatch(
+                id, fun_match, bb_addr1, bb_addr2, BasicBlockAlgorithm(bb_algo)
+            )
 
             # As a basic block address can be in multiple functions create a nested dictionnary
             if bb_addr1 in self.primary_basicblock_match:
@@ -223,6 +256,7 @@ class BindiffFile(object):
         Initialize the database by creating all the tables
         """
         conn = db.cursor()
+        # fmt: off
         conn.execute("""
                      CREATE TABLE file (id INTEGER PRIMARY KEY, filename TEXT, exefilename TEXT, hash CHARACTER(40),
                      functions INT, libfunctions INT, calls INT, basicblocks INT, libbasicblocks INT, edges INT,
@@ -247,12 +281,23 @@ class BindiffFile(object):
                      CREATE TABLE instruction (basicblockid INT, address1 BIGINT, address2 BIGINT,
                      FOREIGN KEY(basicblockid) REFERENCES basicblock(id))""")
         db.commit()
+        # fmt: on
 
-        conn.execute("""INSERT INTO basicblockalgorithm(name) VALUES ("basicBlock: edges prime product")""")
+        conn.execute(
+            """INSERT INTO basicblockalgorithm(name) VALUES ("basicBlock: edges prime product")"""
+        )
         db.commit()
 
     @staticmethod
-    def create(filename: str, primary: str, secondary: str, version: str, desc: str, similarity: float, confidence: float) -> 'BindiffFile':
+    def create(
+        filename: str,
+        primary: str,
+        secondary: str,
+        version: str,
+        desc: str,
+        similarity: float,
+        confidence: float,
+    ) -> "BindiffFile":
         """
         Create a new Bindiff database object in the file given in `filename`.
         It only takes two binaries.
@@ -275,16 +320,19 @@ class BindiffFile(object):
         # Save primary
         file1 = Path(primary)
         hash1 = hashlib.sha256(file1.read_bytes()).hexdigest() if file1.exists() else ""
-        conn.execute("""INSERT INTO file (filename, exefilename, hash) VALUES (:filename, :name, :hash)""",
-                     {"filename": str(file1), "name": file1.name, "hash": hash1})
+        conn.execute(
+            """INSERT INTO file (filename, exefilename, hash) VALUES (:filename, :name, :hash)""",
+            {"filename": str(file1), "name": file1.name, "hash": hash1},
+        )
 
-        
         # Save secondary
         file2 = Path(secondary)
         hash2 = hashlib.sha256(file2.read_bytes()).hexdigest() if file2.exists() else ""
-        conn.execute("""INSERT INTO file (filename, exefilename, hash) VALUES (:filename, :name, :hash)""",
-                     {"filename": str(file2), "name": file2.name, "hash": hash2})
-                
+        conn.execute(
+            """INSERT INTO file (filename, exefilename, hash) VALUES (:filename, :name, :hash)""",
+            {"filename": str(file2), "name": file2.name, "hash": hash2},
+        )
+
         conn.execute(
             """
             INSERT INTO metadata (version, file1, file2, description, created, modified, similarity, confidence)
@@ -294,18 +342,28 @@ class BindiffFile(object):
                 "version": version,
                 "desc": desc,
                 "created": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                "modified":datetime.now().strftime("%Y-%m-%d %H:%M:%S"), # modified has to be filled so initialize it to the creation time
+                "modified": datetime.now().strftime(
+                    "%Y-%m-%d %H:%M:%S"
+                ),  # modified has to be filled so initialize it to the creation time
                 "similarity": similarity,
-                "confidence": confidence
-            }
+                "confidence": confidence,
+            },
         )
-        
+
         db.commit()
         db.close()
         return BindiffFile(filename, permission="rw")
 
-
-    def add_function_match(self, fun_addr1: int, fun_addr2: int, fun_name1: str, fun_name2: str, similarity: float, confidence: float = 0.0, identical_bbs: int = 0) -> int:
+    def add_function_match(
+        self,
+        fun_addr1: int,
+        fun_addr2: int,
+        fun_name1: str,
+        fun_name2: str,
+        similarity: float,
+        confidence: float = 0.0,
+        identical_bbs: int = 0,
+    ) -> int:
         """
         Add a function match in database.
 
@@ -331,12 +389,14 @@ class BindiffFile(object):
                 "name2": fun_name2,
                 "similarity": similarity,
                 "confidence": confidence,
-                "identical_bbs": identical_bbs
-            }
+                "identical_bbs": identical_bbs,
+            },
         )
         return cursor.lastrowid
 
-    def add_basic_block_match(self, fun_addr1: int, fun_addr2: int, bb_addr1: int, bb_addr2: int) -> int:
+    def add_basic_block_match(
+        self, fun_addr1: int, fun_addr2: int, bb_addr1: int, bb_addr2: int
+    ) -> int:
         """
         Add a basic block match in database.
 
@@ -359,7 +419,7 @@ class BindiffFile(object):
                 "address1": bb_addr1,
                 "address2": bb_addr2,
                 "algorithm": "1",
-            }
+            },
         )
         return cursor.lastrowid
 
@@ -381,10 +441,12 @@ class BindiffFile(object):
                 "address1": inst_addr1,
                 "address2": inst_addr2,
                 "basicblockid": entry,
-            }
+            },
         )
 
-    def update_file_infos(self, entry_id: int, fun_count: int, lib_count: int, bb_count: int, inst_count: int) -> None:
+    def update_file_infos(
+        self, entry_id: int, fun_count: int, lib_count: int, bb_count: int, inst_count: int
+    ) -> None:
         """
         Update information about a binary in database (function, basic block count ...)
 

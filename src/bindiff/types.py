@@ -6,6 +6,7 @@ class BindiffNotFound(Exception):
     Exception raised if Bindiff binary cannot be found
     when trying to diff two binaries.
     """
+
     pass
 
 

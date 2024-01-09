@@ -11,26 +11,39 @@ import sys
 from bindiff import BinDiff
 from binexport import ProgramBinExport
 
-BINARY_FORMAT = {'application/x-dosexec',
-                 'application/x-sharedlib',
-                 'application/x-mach-binary',
-                 'application/x-executable',
-                 'application/x-object',
-                 'application/x-pie-executable'}
+BINARY_FORMAT = {
+    "application/x-dosexec",
+    "application/x-sharedlib",
+    "application/x-mach-binary",
+    "application/x-executable",
+    "application/x-object",
+    "application/x-pie-executable",
+}
 
-EXTENSIONS_WHITELIST = {'application/octet-stream': ['.dex']}
+EXTENSIONS_WHITELIST = {"application/octet-stream": [".dex"]}
 
 
-CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'],
-                        max_content_width=300)
+CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"], max_content_width=300)
 
 
 @click.command(context_settings=CONTEXT_SETTINGS)
-@click.option('-i', '--ida-path', type=click.Path(exists=True), default=None, help="IDA Pro installation directory")
-@click.option('-b', '--bindiff-path', type=click.Path(exists=True), default=None, help="BinDiff differ directory")
-@click.option('-o', '--output', type=click.Path(), default=None, help="Output file matching")
+@click.option(
+    "-i",
+    "--ida-path",
+    type=click.Path(exists=True),
+    default=None,
+    help="IDA Pro installation directory",
+)
+@click.option(
+    "-b",
+    "--bindiff-path",
+    type=click.Path(exists=True),
+    default=None,
+    help="BinDiff differ directory",
+)
+@click.option("-o", "--output", type=click.Path(), default=None, help="Output file matching")
 @click.argument("primary", type=click.Path(exists=True), metavar="<primary file>")
-@click.argument('secondary', type=click.Path(exists=True), metavar="<secondary file>")
+@click.argument("secondary", type=click.Path(exists=True), metavar="<secondary file>")
 def main(ida_path: str, bindiff_path: str, output: str, primary: str, secondary: str) -> None:
     """
     bindiffer is a very simple utility to diff two binary files using BinDiff
@@ -44,20 +57,22 @@ def main(ida_path: str, bindiff_path: str, output: str, primary: str, secondary:
     :param secondary: Path to the secondary file
     """
 
-    logging.basicConfig(format='[%(levelname)s] %(message)s', level=logging.INFO)
+    logging.basicConfig(format="[%(levelname)s] %(message)s", level=logging.INFO)
 
     if ida_path:
-        os.environ['IDA_PATH'] = Path(ida_path).resolve().as_posix()
+        os.environ["IDA_PATH"] = Path(ida_path).resolve().as_posix()
 
     if bindiff_path:
-        os.environ['BINDIFF_PATH'] = Path(bindiff_path).resolve().as_posix()
+        os.environ["BINDIFF_PATH"] = Path(bindiff_path).resolve().as_posix()
 
     if not BinDiff.is_installation_ok():
-        logging.error("can't find bindiff executable (make sure its available in $PATH or via --bindiff-path")
+        logging.error(
+            "can't find bindiff executable (make sure its available in $PATH or via --bindiff-path"
+        )
         sys.exit(1)
 
     if output is None:
-        output = '{}_vs_{}.BinDiff'.format(Path(primary).stem, Path(secondary).stem)
+        output = "{}_vs_{}.BinDiff".format(Path(primary).stem, Path(secondary).stem)
 
     # Check that the output name is not too long
     if len(output) > 255:
@@ -70,14 +85,18 @@ def main(ida_path: str, bindiff_path: str, output: str, primary: str, secondary:
     if not (primary.suffix == ".BinExport" and secondary.suffix == ".BinExport"):
         for file in [primary, secondary]:
             mime_type = magic.from_file(file, mime=True)
-            if mime_type not in BINARY_FORMAT and Path(file).suffix not in EXTENSIONS_WHITELIST.get(mime_type, []):
-                logging.error(f"file {file} mimetype ({mime_type}) not supported (not an executable file)")
+            if mime_type not in BINARY_FORMAT and Path(file).suffix not in EXTENSIONS_WHITELIST.get(
+                mime_type, []
+            ):
+                logging.error(
+                    f"file {file} mimetype ({mime_type}) not supported (not an executable file)"
+                )
                 exit(1)
 
         # Export each binary separately (and then diff to be able to print it)
         logging.info(f"export primary: {primary}.BinExport")
         ProgramBinExport.from_binary_file(primary, open_export=False, override=True)
-        primary = Path(str(primary)+".BinExport")
+        primary = Path(str(primary) + ".BinExport")
 
         logging.info(f"export secondary: {secondary}.BinExport")
         ProgramBinExport.from_binary_file(secondary, open_export=False, override=True)
@@ -92,5 +111,5 @@ def main(ida_path: str, bindiff_path: str, output: str, primary: str, secondary:
         sys.exit(1)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
