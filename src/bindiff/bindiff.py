@@ -127,7 +127,7 @@ class BinDiff(BindiffFile):
         return [(self.primary[match.address1], self.secondary[match.address2], match) \
                 for match in self.primary_functions_match.values()]
 
-    def _unmatched_bbs(self, function: FunctionBinExport, map: dict[Addr, dict[Addr, BasicBlockMatch]]) -> list[BasicBlockBinExport]:
+    def _unmatched_bbs(self, function: FunctionBinExport, map: dict[int, dict[int, BasicBlockMatch]]) -> list[BasicBlockBinExport]:
         bbs = []
         for bb_addr, bb in function.items():
             if maps := map.get(bb_addr):
@@ -180,7 +180,7 @@ class BinDiff(BindiffFile):
                     items.append((bb, function2[match.address2], match))
         return items
 
-    def _unmatched_instrs(self, bb: BasicBlockBinExport, map: dict[Addr, dict[Addr, Addr]]) -> list[InstructionBinExport]:
+    def _unmatched_instrs(self, bb: BasicBlockBinExport, map: dict[int, dict[int, int]]) -> list[InstructionBinExport]:
         instrs = []
         for addr, instr in bb.instructions.items():
             if addr not in map:
