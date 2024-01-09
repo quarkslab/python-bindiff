@@ -22,14 +22,14 @@ classifiers = [
     'Operating System :: OS Independent',
 ]
 
+[project.scripts]
+bindiffer = 'bindiff.__main__:main'
+
 [project.urls]
 Homepage = "https://github.com/quarkslab/python-bindiff"
 Repository = "https://github.com/quarkslab/python-bindiff"
 Documentation = "https://diffing.quarkslab.com/differs/bindiff.html#python-bindiff"
 "Bug Tracker" = "https://github.com/quarkslab/python-bindiff/issues"
-
-[tools.setuptools]
-script-files = ["bins/bindiffer"]
 
 [tool.black]
 line-length = 100
