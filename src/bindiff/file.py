@@ -16,18 +16,19 @@ class File:
     """
 
     # fmt: off
-    id: int             #: Unique ID of the file in database
-    filename: str       #: file path
-    exefilename: str    #: file name
-    hash: str           #: SHA256 hash of the file
-    functions: int      #: total number of functions
-    libfunctions: int   #: total number of functions identified as library
-    calls: int          #: number of calls
-    basicblocks: int    #: number of basic blocks
-    libbasicblocks: int #: number of basic blocks belonging to library functions
-    edges: int          #: number of edges in callgraph
-    libedges: int       #: number of edges in callgraph addressing a library
-    instructions: int   #: number of instructions
+    id: int               #: Unique ID of the file in database
+    filename: str         #: file path
+    exefilename: str      #: file name
+    hash: str             #: SHA256 hash of the file
+    functions: int        #: total number of functions
+    libfunctions: int     #: total number of functions identified as library
+    calls: int            #: number of calls
+    basicblocks: int      #: number of basic blocks
+    libbasicblocks: int   #: number of basic blocks belonging to library functions
+    edges: int            #: number of edges in callgraph
+    libedges: int         #: number of edges in callgraph addressing a library
+    instructions: int     #: number of instructions
+    libinstructions: int  #: number of instructions in library functions
     # fmt: on
 
 
