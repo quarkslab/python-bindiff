@@ -242,8 +242,9 @@ class BinDiff(BindiffFile):
         """
         insts = []
         for addr, instr in block1.instructions.items():
-            if addr2 := self.primary_instruction_match.get(addr):
-                insts.append((instr, block2.instructions[addr2]))
+            if inst_map := self.primary_instruction_match.get(addr):
+                if addr2 := inst_map.get(block1.function.addr):
+                    insts.append((instr, block2.instructions[addr2]))
         return insts
 
     def get_match(
