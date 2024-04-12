@@ -145,8 +145,8 @@ class BinDiff(BindiffFile):
                 # The block has been match but in another function thus unmatched here
                 if function.addr not in maps:
                     bbs.append(bb)
-                else:
-                    bbs.append(bb)
+            else:
+                bbs.append(bb)
         return bbs
 
     def primary_unmatched_basic_block(
