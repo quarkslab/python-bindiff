@@ -14,7 +14,7 @@ dependencies = [
     "python-magic; os_name!='nt'",
     "python-magic-bin; os_name=='nt'",
     'click',
-    'python-binexport>=0.2.0',
+    'python-binexport>=0.3.3',
 ]
 classifiers = [
     'Topic :: Security',
