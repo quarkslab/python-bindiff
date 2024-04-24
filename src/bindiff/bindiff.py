@@ -326,7 +326,8 @@ class BinDiff(BindiffFile):
         return True
 
     @staticmethod
-    def from_binary_files(p1_path: str, p2_path: str, diff_out: str) -> Optional["BinDiff"]:
+    def from_binary_files(p1_path: str, p2_path: str, diff_out: str,
+                          override: bool = False) -> Optional["BinDiff"]:
         """
         Diff two executable files. Thus it export .BinExport files from IDA
         and then diff the two resulting files in BinDiff.
@@ -334,36 +335,43 @@ class BinDiff(BindiffFile):
         :param p1_path: primary binary file to diff
         :param p2_path: secondary binary file to diff
         :param diff_out: output file for the diff
+        :param override: override Binexports files and diffing
         :return: BinDiff object representing the diff
         """
 
-        p1 = ProgramBinExport.from_binary_file(p1_path)
-        p2 = ProgramBinExport.from_binary_file(p2_path)
-        p1_binexport = Path(f"{p1_path}.BinExport")
-        p2_binexport = Path(f"{p2_path}.BinExport")
+        p1 = ProgramBinExport.from_binary_file(p1_path, override=override)
+        p2 = ProgramBinExport.from_binary_file(p2_path, override=override)
         if p1 and p2:
-            retcode = BinDiff.raw_diffing(p1_binexport, p2_binexport, diff_out)
-            return BinDiff(p1, p2, diff_out) if retcode else None
+            return BinDiff.from_binexport_files(p1, p2, diff_out, override=override)
         else:
             logging.error("p1 or p2 could not have been 'binexported'")
             return None
 
     @staticmethod
     def from_binexport_files(
-        p1_binexport: str, p2_binexport: str, diff_out: str
+        p1_binexport: Union[ProgramBinExport, str],
+        p2_binexport: Union[ProgramBinExport, str],
+        diff_out: str,
+        override: bool = False
     ) -> Optional["BinDiff"]:
         """
         Diff two binexport files. Diff the two binexport files with bindiff
         and then load a BinDiff instance.
 
-        :param p1_binexport: primary binexport file to diff
-        :param p2_binexport: secondary binexport file to diff
+        :param p1_binexport: primary binexport file to diff (path or object)
+        :param p2_binexport: secondary binexport file to diff (path or object)
         :param diff_out: output file for the diff
+        :param override: override Binexports files and diffing
         :return: BinDiff object representing the diff
         """
+        p1_path = p1_binexport.path if isinstance(p1_binexport, ProgramBinExport) else p1_binexport
+        p2_path = p2_binexport.path if isinstance(p2_binexport, ProgramBinExport) else p2_binexport
 
-        retcode = BinDiff.raw_diffing(p1_binexport, p2_binexport, diff_out)
-        return BinDiff(p1_binexport, p2_binexport, diff_out) if retcode else None
+        if not Path(diff_out).exists() or override:
+            retcode = BinDiff.raw_diffing(p1_path, p2_path, diff_out)
+            return BinDiff(p1_binexport, p2_binexport, diff_out) if retcode else None
+        else:
+            return BinDiff(p1_binexport, p2_binexport, diff_out)
 
     @staticmethod
     def _configure_bindiff_path() -> None:
