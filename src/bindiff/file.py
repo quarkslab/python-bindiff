@@ -120,8 +120,8 @@ class BindiffFile(object):
 
         # Instruction matches
         # {inst_addr : {match_func_addr : match_inst_addr}}
-        self.primary_instruction_match: dict[Addr, dict[Addr, Addr]] = {}
-        self.secondary_instruction_match: dict[Addr, dict[Addr, Addr]] = {}
+        self.primary_instruction_match: dict[int, dict[int, int]] = {}
+        self.secondary_instruction_match: dict[int, dict[int, int]] = {}
         self._load_instruction_match(self.db.cursor())
 
     @property
