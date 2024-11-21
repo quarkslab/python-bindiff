@@ -28,7 +28,18 @@ The python module needs to execute the `differ` executable. As such it should be
 Usage as a python module
 ------------------------
 
-The simplest way to get the programs diffed is:
+The simplest way to get the programs, already exported with BinExport, diffed, is:
+
+```python
+from bindiff import BinDiff
+
+diff = BinDiff.from_binary_files("sample1.exe", "sample2.exe", "out.BinDiff")
+
+# or performing the diff on BinExport files
+diff = BinDiff.from_binexport_files("sample1.BinExport", "sample2.BinExport", "out.BinDiff")
+```
+
+To load the diffing results of an **existing** diff.BinDiff file, do:
 
 ```python
 from bindiff import BinDiff
@@ -56,14 +67,6 @@ after instanciating BinDiff those ``p1`` and ``p2`` are modified.**
 From the API it is also possible to directly perform the BinExport
 extraction and the diffing:
 
-```python
-from bindiff import BinDiff
-
-diff = BinDiff.from_binary_files("sample1.exe", "sample2.exe", "out.BinDiff")
-
-# or performing the diff on BinExport files
-diff = BinDiff.from_binexport_files("sample1.BinExport", "sample2.BinExport", "out.BinDiff")
-```
 
 Usage as a command line
 -----------------------
