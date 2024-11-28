@@ -306,8 +306,8 @@ class BindiffFile(object):
         It only takes two binaries.
 
         :param filename: database file path
-        :param primary: path to primary binary
-        :param secondary: path to secondary binary
+        :param primary: path to primary export file
+        :param secondary: path to secondary export file
         :param version: version of the differ used
         :param desc: description of the database
         :param similarity: similarity score between to two binaries
@@ -325,7 +325,7 @@ class BindiffFile(object):
         hash1 = hashlib.sha256(file1.read_bytes()).hexdigest() if file1.exists() else ""
         conn.execute(
             """INSERT INTO file (filename, exefilename, hash) VALUES (:filename, :name, :hash)""",
-            {"filename": str(file1), "name": file1.name, "hash": hash1},
+            {"filename": str(file1.with_suffix("").name), "name": file1.name, "hash": hash1},
         )
 
         # Save secondary
@@ -333,7 +333,7 @@ class BindiffFile(object):
         hash2 = hashlib.sha256(file2.read_bytes()).hexdigest() if file2.exists() else ""
         conn.execute(
             """INSERT INTO file (filename, exefilename, hash) VALUES (:filename, :name, :hash)""",
-            {"filename": str(file2), "name": file2.name, "hash": hash2},
+            {"filename": str(file2.with_suffix("").name), "name": file2.name, "hash": hash2},
         )
 
         conn.execute(
