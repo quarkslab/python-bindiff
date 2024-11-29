@@ -291,6 +291,14 @@ class BinDiff(BindiffFile):
         f1 = Path(p1_path)
         f2 = Path(p2_path)
 
+        if not f1.exists():
+            logging.error(f"file '{p1_path}' doesn't exist")
+            return False
+        
+        if not f2.exists():
+            logging.error(f"file '{p2_path}' doesn't exist")
+            return False
+            
         cmd_line = [
             BINDIFF_BINARY.as_posix(),
             f"--primary={p1_path}",
