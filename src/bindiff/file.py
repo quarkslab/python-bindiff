@@ -1,12 +1,11 @@
 from pathlib import Path
 import sqlite3
-import hashlib
 from datetime import datetime
 from dataclasses import dataclass
 from typing import Union
 import ctypes
 
-from bindiff.types import FunctionAlgorithm, BasicBlockAlgorithm
+from bindiff.types import FunctionAlgorithm, BasicBlockAlgorithm, function_algorithm_str, basicblock_algorithm_str
 
 
 @dataclass
@@ -78,8 +77,10 @@ class BindiffFile(object):
     def __init__(self, file: Union[Path, str], permission: str = "ro"):
         """
         :param file: path to Bindiff database
-        :param permission: permission to use for opening database (default: ro)
+        :param permission: database permissions (default: ro)
         """
+        assert permission in ["ro", "rw"]
+
         self._file = file
 
         # Open database
@@ -92,13 +93,11 @@ class BindiffFile(object):
         self.version: str = None       #: version of the differ used for diffing
         self.created: datetime = None  #: Database creation date
         self.modified: datetime = None #: Database last modification date
-        self._load_metadata(self.db.cursor())
+
 
         # Files
         self.primary_file: File = None    #: Primary file
         self.secondary_file: File = None  #: Secondary file
-        self._load_file(self.db.cursor())
-        # fmt: on
 
         # Function matches
         self.primary_functions_match: dict[
@@ -107,7 +106,6 @@ class BindiffFile(object):
         self.secondary_functions_match: dict[
             int, FunctionMatch
         ] = {}  #: FunctionMatch indexed by addresses in secondary
-        self._load_function_match(self.db.cursor())
 
         # Basicblock matches:  BB-addr -> fun-addr -> match
         self.primary_basicblock_match: dict[
@@ -116,13 +114,21 @@ class BindiffFile(object):
         self.secondary_basicblock_match: dict[
             int, dict[int, BasicBlockMatch]
         ] = {}  #: Basic block match from secondary
-        self._load_basicblock_match(self.db.cursor())
+
 
         # Instruction matches
         # {inst_addr : {match_func_addr : match_inst_addr}}
         self.primary_instruction_match: dict[int, dict[int, int]] = {}
         self.secondary_instruction_match: dict[int, dict[int, int]] = {}
-        self._load_instruction_match(self.db.cursor())
+
+        # If 'ro', load database content
+        if permission == "ro":
+            self._load_metadata(self.db.cursor())
+            self._load_file(self.db.cursor())
+            self._load_function_match(self.db.cursor())
+            self._load_basicblock_match(self.db.cursor())
+            self._load_instruction_match(self.db.cursor())
+
 
     @property
     def unmatched_primary_count(self) -> int:
@@ -169,7 +175,7 @@ class BindiffFile(object):
         :param cursor: sqlite3 cursor to the DB
         """
         files = cursor.execute("SELECT * FROM file").fetchall()
-        assert len(files) >= 2
+        # assert len(files) >= 2
 
         self.primary_file = File(*files[0])
         self.secondary_file = File(*files[1])
@@ -268,7 +274,7 @@ class BindiffFile(object):
                      CREATE TABLE metadata (version TEXT, file1 INTEGER, file2 INTEGER, description TEXT, created DATE,
                      modified DATE, similarity DOUBLE PRECISION, confidence DOUBLE PRECISION,
                      FOREIGN KEY(file1) REFERENCES file(id), FOREIGN KEY(file2) REFERENCES file(id))""")
-        conn.execute("""CREATE TABLE functionalgorithm (id SMALLINT PRIMARY KEY, name TEXT)""")
+        conn.execute("""CREATE TABLE functionalgorithm (id INTEGER PRIMARY KEY, name TEXT)""")
         conn.execute("""
                      CREATE TABLE function (id INTEGER PRIMARY KEY, address1 BIGINT, name1 TEXT, address2 BIGINT,
                      name2 TEXT, similarity DOUBLE PRECISION, confidence DOUBLE PRECISION, flags INTEGER,
@@ -286,16 +292,11 @@ class BindiffFile(object):
         db.commit()
         # fmt: on
 
-        conn.execute(
-            """INSERT INTO basicblockalgorithm(name) VALUES ("basicBlock: edges prime product")"""
-        )
         db.commit()
 
     @staticmethod
     def create(
         filename: str,
-        primary: str,
-        secondary: str,
         version: str,
         desc: str,
         similarity: float,
@@ -306,8 +307,6 @@ class BindiffFile(object):
         It only takes two binaries.
 
         :param filename: database file path
-        :param primary: path to primary export file
-        :param secondary: path to secondary export file
         :param version: version of the differ used
         :param desc: description of the database
         :param similarity: similarity score between to two binaries
@@ -319,22 +318,6 @@ class BindiffFile(object):
         BindiffFile.init_database(db)
 
         conn = db.cursor()
-
-        # Save primary
-        file1 = Path(primary)
-        hash1 = hashlib.sha256(file1.read_bytes()).hexdigest() if file1.exists() else ""
-        conn.execute(
-            """INSERT INTO file (filename, exefilename, hash) VALUES (:filename, :name, :hash)""",
-            {"filename": str(file1.with_suffix("").name), "name": file1.name, "hash": hash1},
-        )
-
-        # Save secondary
-        file2 = Path(secondary)
-        hash2 = hashlib.sha256(file2.read_bytes()).hexdigest() if file2.exists() else ""
-        conn.execute(
-            """INSERT INTO file (filename, exefilename, hash) VALUES (:filename, :name, :hash)""",
-            {"filename": str(file2.with_suffix("").name), "name": file2.name, "hash": hash2},
-        )
 
         conn.execute(
             """
@@ -353,9 +336,88 @@ class BindiffFile(object):
             },
         )
 
+        # Fill functionalgorithm table
+        for algo in FunctionAlgorithm:
+            algo_str = function_algorithm_str(algo)
+            conn.execute(
+                """INSERT INTO functionalgorithm (name) VALUES (:name)""",
+                {"name": f"function: {algo_str}"},
+            )
+
+        # Fill basicblockalgorithm table
+        for algo in BasicBlockAlgorithm:
+            algo_str = basicblock_algorithm_str(algo)
+            conn.execute(
+                """INSERT INTO basicblockalgorithm (name) VALUES (:name)""",
+                {"name": f"basicBlock: {algo_str}"},
+            )
+
+
         db.commit()
         db.close()
         return BindiffFile(filename, permission="rw")
+
+    def add_file_matched(self,
+                         export_name: str,
+                         hash: str,
+                         executable_name: str = "",
+                         functions: int = 0,
+                         libfunctions: int = 0,
+                         calls: int = 0,
+                         basicblocks: int = 0,
+                         libbasicblocks: int = 0,
+                         edges: int = 0,
+                         libedges: int = 0,
+                         instructions: int = 0,
+                         libinstructions: int = 0):
+        """
+        Add a file matched.
+        Only export_name and hash are mandatory.
+
+        :warning: not providing the other field might not
+                  render correctly in Bindiff, or IDA plugins.
+
+        :param export_name: Export filename (with extension).
+        :param hash: SHA256 hash of the executable
+        :param executable_name: Executable filename (if none is provided, export without extension)
+        :param functions: number of functions
+        :param libfunctions:number of library functions
+        :param calls: number of calls
+        :param basicblocks: number of basic blocks
+        :param libbasicblocks: number of library basic blocks
+        :param edges: number of CFG edges
+        :param libedges: number of library CFG edges
+        :param instructions: number of instructions
+        :param libinstructions: number of library instructions
+        :return: None
+        """
+        cursor = self.db.cursor()
+
+        export_p = Path(export_name)
+
+        params = {
+            "filename": export_p.with_suffix("").name,
+            "exefilename": executable_name if executable_name else export_p.with_suffix("").name,
+            "hash": hash,
+            "functions": functions,
+            "libfunctions": libfunctions,
+            "calls": calls,
+            "basicblocks": basicblocks,
+            "libbasicblocks": libbasicblocks,
+            "edges": edges,
+            "libedges": libedges,
+            "instructions": instructions,
+            "libinstructions": libinstructions
+        }
+
+        keys = list(params)
+        dotkeys = [f":{x}" for x in keys]
+
+        cursor.execute(
+            f"INSERT INTO file ({','.join(keys)}) VALUES ({','.join(dotkeys)})",
+            params,
+        )
+
 
     def add_function_match(
         self,
@@ -382,8 +444,21 @@ class BindiffFile(object):
         cursor = self.db.cursor()
         cursor.execute(
             """
-            INSERT INTO function (address1, address2, name1, name2, similarity, confidence, basicblocks)
-            VALUES (:address1, :address2, :name1, :name2, :similarity, :confidence, :identical_bbs)
+            INSERT INTO function (address1,
+                                  address2,
+                                  name1,
+                                  name2,
+                                  similarity,
+                                  confidence,
+                                  flags,
+                                  algorithm,
+                                  evaluate,
+                                  commentsported,
+                                  basicblocks,
+                                  edges,
+                                  instructions)
+            VALUES (:address1, :address2, :name1, :name2, :similarity,
+                    :confidence, 0, 19, 0, 0, :identical_bbs, 0, 0)
             """,
             {
                 "address1": fun_addr1,
@@ -398,13 +473,12 @@ class BindiffFile(object):
         return cursor.lastrowid
 
     def add_basic_block_match(
-        self, fun_addr1: int, fun_addr2: int, bb_addr1: int, bb_addr2: int
+        self, funentry_id: int, bb_addr1: int, bb_addr2: int
     ) -> int:
         """
         Add a basic block match in database.
 
-        :param fun_addr1: function address of basic block in primary
-        :param fun_addr2: function address of basic block in secondary
+        :param funentry_id: Db Id of the function match
         :param bb_addr1: basic block address in primary
         :param bb_addr2: basic block address in secondary
         :return: id of the row inserted in database.
@@ -413,15 +487,15 @@ class BindiffFile(object):
 
         cursor.execute(
             """
-            INSERT INTO basicblock (functionid, address1, address2, algorithm)
-            VALUES ((SELECT id FROM function WHERE address1=:function_address1 AND address2=:function_address2), :address1, :address2, :algorithm)
+            INSERT INTO basicblock (functionid, address1, address2, algorithm, evaluate)
+            VALUES (:funentry_id, :address1, :address2, :algorithm, :evaluate)
             """,
             {
-                "function_address1": fun_addr1,
-                "function_address2": fun_addr2,
+                "funentry_id": funentry_id,
                 "address1": bb_addr1,
                 "address2": bb_addr2,
                 "algorithm": "1",
+                "evaluate": "0"
             },
         )
         return cursor.lastrowid
@@ -475,4 +549,31 @@ class BindiffFile(object):
                 "instructions": inst_count,
             },
         )
+
+
+    def update_samebb_function_match(
+        self, funentry_id: int, same_bb_count: int) -> None:
+        """
+        Update same basicblock information in function table
+
+        :param funentry_id: id of function matvch entry
+        :param same_bb_count: number of identical basic blocks
+        """
+        cursor = self.db.cursor()
+
+        cursor.execute(
+            """
+            UPDATE function SET basicblocks = :bb_count WHERE id = :entry_id
+            """,
+            {
+                "entry_id": str(funentry_id),
+                "bb_count": same_bb_count
+            },
+        )
+
+
+    def commit(self) -> None:
+        """
+        Commit all pending transaction in the database.
+        """
         self.db.commit()
