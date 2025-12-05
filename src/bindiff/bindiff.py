@@ -131,10 +131,17 @@ class BinDiff(BindiffFile):
         :return: list of tuple, each containing the primary function, the secondary function and
                  the FunctionMatch object
         """
-        return [
-            (self.primary[match.address1], self.secondary[match.address2], match)
-            for match in self.primary_functions_match.values()
-        ]
+        matches = []
+        for match in self.primary_functions_match.values():
+            if match.address1 not in self.primary:
+                logging.error(f"missing primary function match at: {match.address1:#08x}")
+            elif match.address2 not in self.secondary:
+                logging.error(f"missing secondary function match at: {match.address1:#08x}")
+            else:
+                matches.append(
+                    (self.primary[match.address1], self.secondary[match.address2], match)
+                )
+        return matches
 
     def _unmatched_bbs(
         self, function: FunctionBinExport, map: dict[int, dict[int, BasicBlockMatch]]
@@ -294,7 +301,7 @@ class BinDiff(BindiffFile):
         if not f1.exists():
             logging.error(f"file '{p1_path}' doesn't exist")
             return False
-        
+
         if not f2.exists():
             logging.error(f"file '{p2_path}' doesn't exist")
             return False
@@ -335,8 +342,9 @@ class BinDiff(BindiffFile):
         return True
 
     @staticmethod
-    def from_binary_files(p1_path: str, p2_path: str, diff_out: str,
-                          override: bool = False) -> Optional["BinDiff"]:
+    def from_binary_files(
+        p1_path: str, p2_path: str, diff_out: str, override: bool = False
+    ) -> Optional["BinDiff"]:
         """
         Diff two executable files. Thus it export .BinExport files from IDA
         and then diff the two resulting files in BinDiff.
@@ -361,7 +369,7 @@ class BinDiff(BindiffFile):
         p1_binexport: Union[ProgramBinExport, str],
         p2_binexport: Union[ProgramBinExport, str],
         diff_out: str,
-        override: bool = False
+        override: bool = False,
     ) -> Optional["BinDiff"]:
         """
         Diff two binexport files. Diff the two binexport files with bindiff
