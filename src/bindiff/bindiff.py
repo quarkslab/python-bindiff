@@ -134,9 +134,9 @@ class BinDiff(BindiffFile):
         matches = []
         for match in self.primary_functions_match.values():
             if match.address1 not in self.primary:
-                logging.error(f"missing primary function match at '{hex(match.address1)}'")
+                logging.error(f"missing primary function match at: {match.address1:#08x}")
             elif match.address2 not in self.secondary:
-                logging.error(f"missing secondary function match at '{hex(match.address1)}'")
+                logging.error(f"missing secondary function match at: {match.address1:#08x}")
             else:
                 matches.append(
                     (self.primary[match.address1], self.secondary[match.address2], match)
@@ -305,7 +305,8 @@ class BinDiff(BindiffFile):
         if not f2.exists():
             logging.error(f"file '{p2_path}' doesn't exist")
             return False
-
+            
+        assert BINDIFF_BINARY is not None  # for mypy
         cmd_line = [
             BINDIFF_BINARY.as_posix(),
             f"--primary={p1_path}",
@@ -355,8 +356,8 @@ class BinDiff(BindiffFile):
         :return: BinDiff object representing the diff
         """
 
-        p1 = ProgramBinExport.from_binary_file(p1_path, override=override)
-        p2 = ProgramBinExport.from_binary_file(p2_path, override=override)
+        p1 = ProgramBinExport.from_binary(p1_path, override=override)
+        p2 = ProgramBinExport.from_binary(p2_path, override=override)
         if p1 and p2:
             return BinDiff.from_binexport_files(p1, p2, diff_out, override=override)
         else:

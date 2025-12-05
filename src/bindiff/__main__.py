@@ -42,9 +42,9 @@ CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"], max_content_width=30
     help="BinDiff differ directory",
 )
 @click.option("-o", "--output", type=click.Path(), default=None, help="Output file matching")
-@click.argument("primary", type=click.Path(exists=True), metavar="<primary file>")
-@click.argument("secondary", type=click.Path(exists=True), metavar="<secondary file>")
-def main(ida_path: str, bindiff_path: str, output: str, primary: str, secondary: str) -> None:
+@click.argument("primary", type=click.Path(exists=True, path_type=Path), metavar="<primary file>")
+@click.argument("secondary", type=click.Path(exists=True, path_type=Path), metavar="<secondary file>")
+def main(ida_path: str, bindiff_path: str, output: str, primary: Path, secondary: Path) -> None:
     """
     bindiffer is a very simple utility to diff two binary files using BinDiff
     in command line. The two input files can be either binary files (in which
@@ -79,9 +79,6 @@ def main(ida_path: str, bindiff_path: str, output: str, primary: str, secondary:
         logging.error("Output file name is too long (%s).", output)
         exit(1)
 
-    primary = Path(primary)
-    secondary = Path(secondary)
-
     if not (primary.suffix == ".BinExport" and secondary.suffix == ".BinExport"):
         for file in [primary, secondary]:
             mime_type = magic.from_file(file, mime=True)
@@ -95,11 +92,11 @@ def main(ida_path: str, bindiff_path: str, output: str, primary: str, secondary:
 
         # Export each binary separately (and then diff to be able to print it)
         logging.info(f"export primary: {primary}.BinExport")
-        ProgramBinExport.from_binary_file(primary, open_export=False, override=True)
+        ProgramBinExport.generate(primary, override=True)
         primary = Path(str(primary) + ".BinExport")
 
         logging.info(f"export secondary: {secondary}.BinExport")
-        ProgramBinExport.from_binary_file(secondary, open_export=False, override=True)
+        ProgramBinExport.generate(secondary, override=True)
         secondary = Path(str(secondary) + ".BinExport")
 
     logging.info("start diffing")
