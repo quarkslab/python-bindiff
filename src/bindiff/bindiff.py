@@ -299,6 +299,7 @@ class BinDiff(BindiffFile):
             logging.error(f"file '{p2_path}' doesn't exist")
             return False
             
+        assert BINDIFF_BINARY is not None  # for mypy
         cmd_line = [
             BINDIFF_BINARY.as_posix(),
             f"--primary={p1_path}",
@@ -347,8 +348,8 @@ class BinDiff(BindiffFile):
         :return: BinDiff object representing the diff
         """
 
-        p1 = ProgramBinExport.from_binary_file(p1_path, override=override)
-        p2 = ProgramBinExport.from_binary_file(p2_path, override=override)
+        p1 = ProgramBinExport.from_binary(p1_path, override=override)
+        p2 = ProgramBinExport.from_binary(p2_path, override=override)
         if p1 and p2:
             return BinDiff.from_binexport_files(p1, p2, diff_out, override=override)
         else:
