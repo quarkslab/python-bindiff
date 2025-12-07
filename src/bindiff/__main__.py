@@ -8,8 +8,9 @@ import magic
 import click
 import sys
 
-from bindiff import BinDiff
+from bindiff import BinDiff, BindiffWorkspace
 from binexport import ProgramBinExport
+
 
 BINARY_FORMAT = {
     "application/x-dosexec",
@@ -41,10 +42,23 @@ CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"], max_content_width=30
     default=None,
     help="BinDiff differ directory",
 )
-@click.option("-o", "--output", type=click.Path(), default=None, help="Output file matching")
-@click.argument("primary", type=click.Path(exists=True, path_type=Path), metavar="<primary file>")
-@click.argument("secondary", type=click.Path(exists=True, path_type=Path), metavar="<secondary file>")
-def main(ida_path: str, bindiff_path: str, output: str, primary: Path, secondary: Path) -> None:
+@click.option("-o", "--output", type=click.Path(),
+              default=None, help="Output file matching")
+@click.option("--override", is_flag=True, default=False,
+              help="Override existing output files (includes .BinExport files)")
+@click.option("-bw", "--bindiff-workspace", type=click.Path(path_type=Path), default=None,
+              help="Create a BinDiff Workspace database")
+@click.argument("primary", type=click.Path(exists=True, path_type=Path),
+                metavar="<primary file>")
+@click.argument("secondary", type=click.Path(exists=True, path_type=Path),
+                metavar="<secondary file>")
+def main(ida_path: str,
+         bindiff_path: str,
+         output: str,
+         override: bool,
+         primary: Path,
+         secondary: Path,
+         bindiff_workspace: Path|None) -> None:
     """
     bindiffer is a very simple utility to diff two binary files using BinDiff
     in command line. The two input files can be either binary files (in which
@@ -53,8 +67,10 @@ def main(ida_path: str, bindiff_path: str, output: str, primary: Path, secondary
     :param ida_path: Path to the IDA pro folder
     :param bindiff_path: Path to the BinDiff folder
     :param output: Path for the output diffing file
+    :param override: Whether to override existing output files
     :param primary: Path to the primary file
     :param secondary: Path to the secondary file
+    :param bindiff_workspace: Path to the BinDiff workspace database to create
     """
 
     logging.basicConfig(format="[%(levelname)s] %(message)s", level=logging.INFO)
@@ -92,20 +108,26 @@ def main(ida_path: str, bindiff_path: str, output: str, primary: Path, secondary
 
         # Export each binary separately (and then diff to be able to print it)
         logging.info(f"export primary: {primary}.BinExport")
-        ProgramBinExport.generate(primary, override=True)
+        ProgramBinExport.generate(primary, override=override)
         primary = Path(str(primary) + ".BinExport")
 
         logging.info(f"export secondary: {secondary}.BinExport")
-        ProgramBinExport.generate(secondary, override=True)
+        ProgramBinExport.generate(secondary, override=override)
         secondary = Path(str(secondary) + ".BinExport")
 
     logging.info("start diffing")
     if BinDiff.raw_diffing(primary, secondary, output):
         logging.info(f"diffing file written to: {output}")
-        sys.exit(0)
     else:
         logging.error(f"Diffing failed")
-        sys.exit(1)
+    
+    if bindiff_workspace:
+        ws_file = Path(bindiff_workspace)
+        # Create workspace and add the diff
+        workspace = BindiffWorkspace.create(ws_file)
+        workspace.add_diff(Path(output).absolute(), is_function_diff=False)
+        workspace.close()
+        logging.info(f"Bindiff workspace created at: {bindiff_workspace}")
 
 
 if __name__ == "__main__":
