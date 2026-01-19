@@ -368,7 +368,7 @@ class BinDiff(BindiffFile):
     def from_binexport_files(
         p1_binexport: Union[ProgramBinExport, str],
         p2_binexport: Union[ProgramBinExport, str],
-        diff_out: str,
+        diff_out: Union[Path, str],
         override: bool = False,
     ) -> Optional["BinDiff"]:
         """
