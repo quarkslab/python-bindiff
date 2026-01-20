@@ -82,7 +82,7 @@ class BinDiff(BindiffFile):
         self,
         primary: Union[ProgramBinExport, str],
         secondary: Union[ProgramBinExport, str],
-        diff_file: str,
+        diff_file: Union[Path, str],
     ):
         """
         :param primary: first program diffed
@@ -280,7 +280,7 @@ class BinDiff(BindiffFile):
         return self.get_match(function) is not None
 
     @staticmethod
-    def raw_diffing(p1_path: Union[Path, str], p2_path: Union[Path, str], out_diff: str) -> bool:
+    def raw_diffing(p1_path: Union[Path, str], p2_path: Union[Path, str], out_diff: Union[Path, str]) -> bool:
         """
         Static method to diff two binexport files against each other and storing
         the diffing result in the given file
