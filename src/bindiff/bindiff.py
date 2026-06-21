@@ -5,6 +5,7 @@ import os
 import subprocess
 import tempfile
 from pathlib import Path
+from turtle import st
 from typing import Union, Optional
 
 from binexport import ProgramBinExport, FunctionBinExport, BasicBlockBinExport, InstructionBinExport
@@ -280,6 +281,25 @@ class BinDiff(BindiffFile):
         return self.get_match(function) is not None
 
     @staticmethod
+    def _fix_up_filename(p1_path: Path, p2_path: Path, out_diff: Path):
+        """
+        Bindiff assume the Binexports and Bindiff file are in the same directory.
+        If not, it can't open them. The fix is to adapt the `filename` field in
+        the database file. This function automatically adapt the path when the Bindiff
+        file is located in another directory.
+        """
+        p1_path = p1_path.with_suffix("") if p1_path.suffix == ".BinExport" else p1_path
+        p2_path = p2_path.with_suffix("") if p2_path.suffix == ".BinExport" else p2_path
+        p1_relpath = Path(os.path.relpath(p1_path, start=out_diff.parent))
+        p2_relpath = Path(os.path.relpath(p2_path, start=out_diff.parent))
+        
+        diff_file = BindiffFile(out_diff, permission = "rw")
+        diff_file.update_filename(1, str(p1_relpath))
+        diff_file.update_filename(2, str(p2_relpath))
+        diff_file.commit()
+        diff_file.close()
+
+    @staticmethod
     def raw_diffing(p1_path: Union[Path, str], p2_path: Union[Path, str], out_diff: Union[Path, str]) -> bool:
         """
         Static method to diff two binexport files against each other and storing
@@ -318,27 +338,34 @@ class BinDiff(BindiffFile):
         process = subprocess.Popen(cmd_line, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         out, err = process.communicate()
         retcode = process.returncode
+        
         if retcode != 0:
             logging.error(f"differ terminated with error code: {retcode}")
             return False
+        
         # Now look for the generated file
         out_file = tmp_dir / "{}_vs_{}.BinDiff".format(f1.stem, f2.stem)
+
         if out_file.exists():
             shutil.move(out_file, out_diff)
-        else:  # try iterating the directory to find the .BinExport file
+        else:  # try iterating the directory to find the .BinDiff file
             candidates = list(tmp_dir.iterdir())
             if len(candidates) > 1:
                 logging.warning("the output directory not meant to contain multiple files")
             found = False
             for file in candidates:
-                if file.suffix == ".BinExport":
+                if file.suffix == ".BinDiff":
                     shutil.move(file, out_diff)
                     found = True
                     break
             if not found:
-                logging.error("diff file .BinExport not found")
+                logging.error("diff file .BinDiff not found")
                 return False
         shutil.rmtree(tmp_dir, ignore_errors=True)
+
+        #Fixup filename withing BinDiff file
+        BinDiff._fix_up_filename(f1, f2, Path(out_diff))
+
         return True
 
     @staticmethod

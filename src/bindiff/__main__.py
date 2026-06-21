@@ -58,7 +58,7 @@ def main(ida_path: str,
          override: bool,
          primary: Path,
          secondary: Path,
-         bindiff_workspace: Path|None) -> None:
+         bindiff_workspace: Path | None) -> None:
     """
     bindiffer is a very simple utility to diff two binary files using BinDiff
     in command line. The two input files can be either binary files (in which
@@ -123,6 +123,11 @@ def main(ida_path: str,
     
     if bindiff_workspace:
         ws_file = Path(bindiff_workspace)
+
+        # Force .BinDiffWorkspace extension otherwise it can be opened
+        if ws_file.suffix != ".BinDiffWorkspace":
+            ws_file = Path(str(ws_file)+".BinDiffWorkspace")
+
         # Create workspace and add the diff
         workspace = BindiffWorkspace.create(ws_file)
         workspace.add_diff(Path(output).absolute(), is_function_diff=False)

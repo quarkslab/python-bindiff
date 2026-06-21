@@ -571,9 +571,34 @@ class BindiffFile(object):
             },
         )
 
+    def update_filename(self, file_id: int, file_path: str) -> None:
+        """
+        Update filename field in file table to match bindiff file position.
+
+        :param file_id: file id
+        :param file_path: relative file path from bindiff file
+        """
+        cursor = self.db.cursor()
+
+        cursor.execute(
+            """
+            UPDATE file SET filename = :file_name WHERE id = :file_id
+            """,
+            {
+                "file_name": str(file_path),
+                "file_id": file_id
+            },
+        )
+
 
     def commit(self) -> None:
         """
         Commit all pending transaction in the database.
         """
         self.db.commit()
+
+    def close(self) -> None:
+        """
+        Close the underlying database
+        """
+        self.db.close()
