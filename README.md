@@ -75,17 +75,24 @@ The ``bindiffer`` command line allows to generate a diff file from the two
 .BinExport files or directly from the binaries (thanks to python-binexport and
 idascript). The help message is the following:
     
-    Usage: bindiffer [OPTIONS] <primary file> <secondary file>
-    
-      bindiffer is a very simple utility to diff two binary files using BinDiff in command line. The two input files can be either binary files (in which case
-      IDA is used) or directly .BinExport file (solely BinDiff is used).
-    
+    Usage: bindiffer [OPTIONS] <primary file|dir> <secondary file|dir>
+
+      bindiffer is a very simple utility to diff two binary files using BinDiff in command line. The two input files can be either binary files (in which
+      case IDA is used) or directly .BinExport file (solely BinDiff is used). It also accept two directories two diff each files based on their names 
+
     Options:
-      -i, --ida-path PATH      IDA Pro installation directory
-      -b, --bindiff-path PATH  BinDiff differ directory
-      -t, --type <type>        inputs files type ('bin', 'binexport') [default:'bin']
-      -o, --output PATH        Output file matching
-      -h, --help               Show this message and exit.
+      -d, --disassembler [ida|ghidra|binary_ninja]
+                                      Disassembler to use
+      --disass-path TEXT              Path of the disassembler (dir or binary for IDA, dir for Ghidra)(if not provided search $PATH or environment
+                                      variable IDA_PATH, GHIDRA_PATH)
+      -t, --threads INTEGER           Thread number to use
+      --timeout INTEGER               Per-file export timeout in seconds (if not set, no timeout is enforced)
+      -b, --bindiff-path PATH         BinDiff differ directory
+      --stop-on-error                 Stop on error
+      -o, --output PATH               Output BinDiff file, or directory for batch
+      --override                      Override existing output files (includes .BinExport files)
+      -bw, --bindiff-workspace PATH   Create a BinDiff Workspace database
+      -h, --help                      Show this message and exit.
 
 To work bindiff ``differ`` binary should be in the ``$PATH``, given via
 the ``BINDIFF_PATH`` environment variable or with the ``-b`` command option.
