@@ -5,7 +5,6 @@ import os
 import subprocess
 import tempfile
 from pathlib import Path
-from turtle import st
 from typing import Union, Optional
 
 from binexport import ProgramBinExport, FunctionBinExport, BasicBlockBinExport, InstructionBinExport
